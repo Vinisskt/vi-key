@@ -53,8 +53,13 @@ final class LuaEngine
 
   LuaEngine(KeyEventHandler handler, Context appCtx)
   {
+    this(handler, new File(appCtx.getApplicationContext().getFilesDir(), "lua"));
+  }
+
+  LuaEngine(KeyEventHandler handler, File luaDir)
+  {
     _handler = handler;
-    _lua_dir = new File(appCtx.getApplicationContext().getFilesDir(), "lua");
+    _lua_dir = luaDir;
     _globals = JsePlatform.standardGlobals();
     if (_globals.compiler == null)
       LuaC.install(_globals);

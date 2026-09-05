@@ -3,6 +3,7 @@ import java.io.FileOutputStream
 
 plugins {
   id("com.android.application") version "8.13.2"
+  id("jacoco")
 }
 
 dependencies {
@@ -36,6 +37,7 @@ android {
 
     named("test") {
       java.srcDirs("test")
+      resources.srcDirs("test/resources")
     }
   }
 
@@ -88,6 +90,12 @@ android {
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
+  }
+
+  testOptions {
+    unitTests {
+      isReturnDefaultValues = true
+    }
   }
 }
 
@@ -162,6 +170,23 @@ val compileComposeSequences by tasks.registering(Exec::class) {
 
 tasks.withType(Test::class).configureEach {
   dependsOn(genLayoutsList, checkKeyboardLayouts, compileComposeSequences, genMethodXml)
+}
+
+val jacocoTestReport by tasks.registering(JacocoReport::class) {
+  dependsOn("testDebugUnitTest")
+  group = "verification"
+  description = "Generate JaCoCo coverage report for the unit tests."
+  reports {
+    xml.required.set(true)
+    html.required.set(true)
+  }
+  sourceDirectories.setFrom(files("srcs/juloo.keyboard2", "vendor/cdict/java"))
+  classDirectories.setFrom(fileTree(layout.buildDirectory) {
+    include("**/javac/**/classes/juloo/**/*.class",
+        "**/kotlin-classes/**/juloo/**/*.class")
+    exclude("**/R*.class", "**/BuildConfig.class")
+  })
+  executionData.setFrom(fileTree(layout.buildDirectory) { include("jacoco/*.exec") })
 }
 
 val initDebugKeystore by tasks.registering(Exec::class) {

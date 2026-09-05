@@ -239,6 +239,12 @@ public final class VimEngine
       _clear_count();
       return true;
     }
+    if (c == 'O')
+    {
+      open_line_above();
+      _clear_count();
+      return true;
+    }
     c = Character.toLowerCase(c);
     if (_pending_g)
     {

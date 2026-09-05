@@ -63,7 +63,8 @@ public final class KeyEventHandler
     _suggestions = sg;
     _typedword = new CurrentlyTypedWord(handler, this);
     _vim = new VimEngine(this);
-    _lua = new LuaEngine(this, recv.getApplicationContext());
+    Context ctx = recv.getApplicationContext();
+    _lua = (ctx == null) ? null : new LuaEngine(this, ctx);
   }
 
   Handler get_handler()
@@ -77,7 +78,8 @@ public final class KeyEventHandler
     InputConnection ic = _recv.getCurrentInputConnection();
     _autocap.started(conf, ic);
     _typedword.started(conf, ic);
-    _suggestions.started();
+    if (_suggestions != null)
+      _suggestions.started();
     _move_cursor_force_fallback =
       conf.editor_config.should_move_cursor_force_fallback;
     _space_bar_auto_complete = conf.space_bar_auto_complete;
@@ -264,13 +266,15 @@ public final class KeyEventHandler
   @Override
   public void currently_typed_word(String word)
   {
-    _suggestions.currently_typed_word(word);
+    if (_suggestions != null)
+      _suggestions.currently_typed_word(word);
   }
 
   public void dictionary_changed()
   {
     // Refresh the suggestions immediately after dictionary changed.
-    _suggestions.currently_typed_word(_typedword.get());
+    if (_suggestions != null)
+      _suggestions.currently_typed_word(_typedword.get());
   }
 
   /** Update [_mods] to be consistent with the [mods], sending key events if
@@ -676,7 +680,8 @@ public final class KeyEventHandler
   /** Implement autocorrect when enabled in the settings. */
   void handle_space_bar()
   {
-    if (_space_bar_auto_complete && _suggestions.count > 0
+    if (_space_bar_auto_complete && _suggestions != null
+        && _suggestions.count > 0
         && !_typedword.is_selection_not_empty()
         && _typedword.cursor_relative() == 0)
       suggestion_entered(_suggestions.suggestions[0] + " ");
@@ -734,24 +739,28 @@ public final class KeyEventHandler
         vim_transform_selection_or_line(name);
         return;
       case "reload":
+        if (_lua == null)
+          break;
         _lua.reload();
         _vim.flash_status(_lua.count_commands() + " lua commands", VimEngine.STATUS_COLOR_CMD);
         return;
       case "ls":
-        _vim.flash_status(join_names(_lua.command_names()), VimEngine.STATUS_COLOR_CMD);
+        _vim.flash_status((_lua == null) ? "" : join_names(_lua.command_names()), VimEngine.STATUS_COLOR_CMD);
         return;
       case "addlua":
         vim_add_lua_script(arg);
         return;
       case "rmlua":
-        _lua.delete_script(arg);
+        if (_lua != null)
+          _lua.delete_script(arg);
         return;
       case "float": case "browser": case "br":
         vim_float(arg);
         return;
       default:
-        if (!_lua.execute(name, arg))
-          _vim.flash_status("unknown command: " + name, VimEngine.STATUS_COLOR_CMD);
+        if (_lua != null && _lua.execute(name, arg))
+          return;
+        _vim.flash_status("unknown command: " + name, VimEngine.STATUS_COLOR_CMD);
         return;
     }
   }
@@ -770,7 +779,8 @@ public final class KeyEventHandler
       _vim.flash_status("clipboard empty", VimEngine.STATUS_COLOR_CMD);
       return;
     }
-    _lua.save_script(name, content);
+    if (_lua != null)
+      _lua.save_script(name, content);
   }
 
   String get_clipboard_text()
@@ -1001,7 +1011,7 @@ public final class KeyEventHandler
       return;
     conn.setSelection(abs, abs);
     if (len > 0)
-      conn.deleteSurroundingText(len, 0);
+      conn.deleteSurroundingText(0, len);
     conn.commitText(replace, 1);
   }
 
