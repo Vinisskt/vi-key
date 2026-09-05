@@ -19,6 +19,8 @@ import android.view.WindowManager;
 import android.view.WindowMetrics;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class Keyboard2View extends View
   implements View.OnTouchListener, Pointers.IPointerEventHandler
@@ -110,7 +112,34 @@ public class Keyboard2View extends View
     _shift_key = _keyboard.findKeyWithValue(KeyValue.SHIFT);
     _compose_key = _keyboard.findKeyWithValue(KeyValue.COMPOSE);
     KeyModifier.set_modmap(_keyboard.modmap);
+    if (_config != null && _config.handler != null)
+      _config.handler.quick_tap_symbols(compute_quick_tap_symbols(kw));
     reset();
+  }
+
+  /** Build the map 'character of the main label -> character of the [sw]
+      sublabel' for the quick double-tap feature. Only used when the layout
+      has the [quick_tap] attribute. */
+  static Map<Character, Character> compute_quick_tap_symbols(KeyboardData kw)
+  {
+    Map<Character, Character> map = new TreeMap<Character, Character>();
+    if (!kw.quick_tap)
+      return map;
+    for (KeyboardData.Row row : kw.rows)
+      for (KeyboardData.Key cell : row.keys)
+      {
+        if (cell.keys.length < 4)
+          continue;
+        KeyValue main = cell.keys[0];
+        KeyValue sub = cell.keys[3];
+        if (main == null || sub == null ||
+            main.getKind() != KeyValue.Kind.Char ||
+            sub.getKind() != KeyValue.Kind.Char ||
+            cell.keyHasFlag(3, KeyboardData.Key.F_LOC))
+          continue;
+        map.put(main.getChar(), sub.getChar());
+      }
+    return map;
   }
 
   public void reset()
@@ -373,7 +402,7 @@ public class Keyboard2View extends View
             default:
             case Normal: tc_key = _tc.key; break;
           }
-        drawKeyFrame(canvas, x, y, keyW, keyH, tc_key);
+        drawKeyFrame(canvas, x, y, keyW, keyH, tc_key, isKeyDown);
         if (k.keys[0] != null)
           drawLabel(canvas, k.keys[0], keyW / 2f + x, y, keyH, isKeyDown, tc_key);
         for (int i = 1; i < 9; i++)
@@ -396,7 +425,7 @@ public class Keyboard2View extends View
 
   /** Draw borders and background of the key. */
   void drawKeyFrame(Canvas canvas, float x, float y, float keyW, float keyH,
-      Theme.Computed.Key tc)
+      Theme.Computed.Key tc, boolean pressed)
   {
     float r = tc.border_radius;
     float w = tc.border_width;
@@ -410,6 +439,13 @@ public class Keyboard2View extends View
       drawBorder(canvas, x + keyW - overlap, y, x + keyW, y + keyH, tc.border_right_paint, tc);
       drawBorder(canvas, x, y, x + keyW, y + overlap, tc.border_top_paint, tc);
       drawBorder(canvas, x, y + keyH - overlap, x + keyW, y + keyH, tc.border_bottom_paint, tc);
+    }
+    if (pressed)
+    {
+      // Soft highlight around a pressed key, in the pressed-label accent.
+      float pw = tc.pressed_paint.getStrokeWidth() / 2.f;
+      _tmpRect.set(x + pw, y + pw, x + keyW - pw, y + keyH - pw);
+      canvas.drawRoundRect(_tmpRect, r, r, tc.pressed_paint);
     }
   }
 

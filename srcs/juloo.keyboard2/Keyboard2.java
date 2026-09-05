@@ -19,6 +19,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,6 +42,7 @@ public class Keyboard2 extends InputMethodService
   private ViewGroup _keyboard_container_view;
   private Keyboard2View _keyboard_layout_view;
   private CandidatesView _candidates_view;
+  private TextView _vim_status;
   private Suggestions _suggestions;
   private KeyEventHandler _keyeventhandler;
   /** If not 'null', the layout to use instead of [_config.current_layout]. */
@@ -163,6 +165,7 @@ public class Keyboard2 extends InputMethodService
     _keyboard_container_view = (ViewGroup)inflate_view(R.layout.keyboard);
     _keyboard_layout_view = (Keyboard2View)_keyboard_container_view.findViewById(R.id.keyboard_view);
     _candidates_view = (CandidatesView)_keyboard_container_view.findViewById(R.id.candidates_view);
+    _vim_status = (TextView)_keyboard_container_view.findViewById(R.id.vim_status);
   }
 
   InputMethodManager get_imm()
@@ -541,9 +544,48 @@ public class Keyboard2 extends InputMethodService
       return Keyboard2.this.getCurrentInputConnection();
     }
 
+    public Context getApplicationContext()
+    {
+      return Keyboard2.this.getApplicationContext();
+    }
+
     public Handler getHandler()
     {
       return _handler;
+    }
+
+    public void set_vim_status(String text, int color)
+    {
+      if (_vim_status != null)
+      {
+        _vim_status.setText(text);
+        _vim_status.setTextColor(0xFF1D2021);
+        _vim_status.setBackgroundColor(color);
+        _vim_status.setVisibility(View.VISIBLE);
+      }
+    }
+
+    public boolean is_float_open()
+    {
+      return BrowserActivity.is_open();
+    }
+
+    public void toggle_float_panel(String url)
+    {
+      if (BrowserActivity.is_open())
+        BrowserActivity.close();
+      else
+        BrowserActivity.open(Keyboard2.this, url);
+    }
+
+    public void close_float_panel()
+    {
+      BrowserActivity.close();
+    }
+
+    public void open_help()
+    {
+      BrowserActivity.open_help(Keyboard2.this);
     }
 
     public void set_suggestions(Suggestions suggestions)

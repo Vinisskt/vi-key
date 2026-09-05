@@ -170,6 +170,7 @@ public class Theme
       public final Paint border_top_paint;
       public final Paint border_right_paint;
       public final Paint border_bottom_paint;
+      public final Paint pressed_paint;
       public final float border_width;
       public final float border_radius;
       final Paint _label_paint;
@@ -217,9 +218,11 @@ public class Theme
         border_top_paint = init_border_paint(config, border_width, theme.keyBorderColorTop);
         border_right_paint = init_border_paint(config, border_width, theme.keyBorderColorRight);
         border_bottom_paint = init_border_paint(config, border_width, theme.keyBorderColorBottom);
-        _label_paint = init_label_paint(config, null);
+        pressed_paint = init_border_paint(config, Math.max(border_width, 2.f), theme.pressedColor);
+        pressed_paint.setAlpha(64);
+        _label_paint = init_label_paint(config, _key_font);
         _special_label_paint = init_label_paint(config, _key_font);
-        _sublabel_paint = init_label_paint(config, null);
+        _sublabel_paint = init_label_paint(config, _key_font);
         _special_sublabel_paint = init_label_paint(config, _key_font);
         _label_alpha_bits = (config.labelBrightness & 0xFF) << 24;
       }

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical"
+  android:background="#1D2021">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="#282828"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
+    android:paddingStart="6dp"
+    android:paddingEnd="6dp">
+
+    <EditText
+      android:id="@+id/browser_url"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:singleLine="true"
+      android:hint="URL"
+      android:inputType="textUri"
+      android:imeOptions="actionGo"
+      android:selectAllOnFocus="true"
+      android:textColor="#EBDBB2"
+      android:textColorHint="#7C6F64"
+      android:textSize="13sp"
+      android:background="#3C3836"
+      android:padding="6dp"/>
+
+    <TextView
+      android:id="@+id/browser_btn_back"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="←"
+      android:textSize="16sp"
+      android:textColor="#EBDBB2"
+      android:clickable="true"
+      android:padding="10dp"/>
+
+    <TextView
+      android:id="@+id/browser_btn_fwd"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="→"
+      android:textSize="16sp"
+      android:textColor="#EBDBB2"
+      android:clickable="true"
+      android:padding="10dp"/>
+
+    <TextView
+      android:id="@+id/browser_btn_reload"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="r"
+      android:textSize="16sp"
+      android:textColor="#83A598"
+      android:clickable="true"
+      android:paddingStart="10dp"
+      android:paddingEnd="10dp"/>
+
+    <TextView
+      android:id="@+id/browser_btn_close"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="×"
+      android:textSize="18sp"
+      android:textColor="#FB4934"
+      android:clickable="true"
+      android:paddingStart="10dp"
+      android:paddingEnd="4dp"/>
+  </LinearLayout>
+
+  <WebView
+    android:id="@+id/browser_webview"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"/>
+</LinearLayout>

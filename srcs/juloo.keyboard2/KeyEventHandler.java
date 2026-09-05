@@ -1,14 +1,21 @@
 package juloo.keyboard2;
 
 import android.annotation.SuppressLint;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.InputConnection;
 import java.util.Iterator;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
 import juloo.keyboard2.suggestions.Suggestions;
 
 public final class KeyEventHandler
@@ -20,6 +27,8 @@ public final class KeyEventHandler
   Autocapitalisation _autocap;
   Suggestions _suggestions;
   CurrentlyTypedWord _typedword;
+  final VimEngine _vim;
+  final LuaEngine _lua;
   /** State of the system modifiers. It is updated whether a modifier is down
       or up and a corresponding key event is sent. */
   Pointers.Modifiers _mods;
@@ -36,6 +45,14 @@ public final class KeyEventHandler
   LastAction _last_action = null;
   LastAction _next_last_action = null;
 
+  /** Quick double-tap feature. Maps the character of a key to the special
+      character typed when the key is quickly tapped twice. Populated from the
+      layout by [Keyboard2View]. */
+  Map<Character, Character> _quick_symbols = new TreeMap<Character, Character>();
+  KeyValue _last_quick_key = null;
+  long _last_quick_time = 0;
+  static final long QUICK_TAP_DELAY_MS = 250;
+
   public KeyEventHandler(IReceiver recv, Suggestions sg)
   {
     _recv = recv;
@@ -45,6 +62,13 @@ public final class KeyEventHandler
     _mods = Pointers.Modifiers.EMPTY;
     _suggestions = sg;
     _typedword = new CurrentlyTypedWord(handler, this);
+    _vim = new VimEngine(this);
+    _lua = new LuaEngine(this, recv.getApplicationContext());
+  }
+
+  Handler get_handler()
+  {
+    return _recv.getHandler();
   }
 
   /** Editing just started. */
@@ -58,6 +82,7 @@ public final class KeyEventHandler
       conf.editor_config.should_move_cursor_force_fallback;
     _space_bar_auto_complete = conf.space_bar_auto_complete;
     _last_action = null;
+    _vim.reset();
   }
 
   /** Selection has been updated. */
@@ -106,8 +131,98 @@ public final class KeyEventHandler
     if (key == null)
       return;
     _next_last_action = LastAction.OTHER;
+    if (_recv.is_float_open())
+    {
+      handle_overlay_key(key);
+      _last_action = _next_last_action;
+      return;
+    }
     Pointers.Modifiers old_mods = _mods;
     update_meta_state(mods);
+    if (handle_quick_tap(key))
+    {
+      update_meta_state(old_mods);
+      _last_action = _next_last_action;
+      return;
+    }
+    if (_vim.on_key(key, _meta_state))
+    {
+      // The key was handled by the VIM engine.
+    }
+    else
+    {
+      switch (key.getKind())
+      {
+        case Char: send_text(String.valueOf(key.getChar())); break;
+        case String: send_text(key.getString()); break;
+        case Event: _recv.handle_event_key(key.getEvent()); break;
+        case Keyevent: send_key_down_up(key.getKeyevent()); break;
+        case Modifier: break;
+        case Editing: handle_editing_key(key.getEditing()); break;
+        case Compose_pending: _recv.set_compose_pending(true); break;
+        case Slider: handle_slider(key.getSlider(), key.getSliderRepeat(), false); break;
+        case Macro: evaluate_macro(key.getMacro()); break;
+        case Stateful: handle_stateful(key.getStateful()); break;
+      }
+    }
+    update_meta_state(old_mods);
+    _last_action = _next_last_action;
+  }
+
+  /** Called when the keyboard changes. Provides the mapping for the quick
+      double-tap feature: key character -> special character. */
+  public void quick_tap_symbols(Map<Character, Character> symbols)
+  {
+    _quick_symbols = (symbols == null) ? new TreeMap<Character, Character>() : symbols;
+  }
+
+  /** Types the special character of a key when it is quickly tapped twice.
+      Returns [true] when the event was consumed. Only active while the VIM
+      engine accepts text input and for keys that have a symbol mapped. */
+  private boolean handle_quick_tap(KeyValue key)
+  {
+    if (!_vim.is_insert() || key.getKind() != KeyValue.Kind.Char ||
+        _quick_symbols.isEmpty())
+    {
+      _last_quick_key = null;
+      return false;
+    }
+    char main = key.getChar();
+    long now = SystemClock.uptimeMillis();
+    if (key.equals(_last_quick_key) &&
+        (now - _last_quick_time) <= QUICK_TAP_DELAY_MS)
+    {
+      Character symbol = _quick_symbols.get(main);
+      if (symbol != null)
+      {
+        // Cancel a character buffered by the quick 'jk' escape, or undo the
+        // character already typed by the first tap.
+        if (!_vim.cancel_pending_char())
+        {
+          InputConnection conn = _recv.getCurrentInputConnection();
+          if (conn != null)
+            conn.deleteSurroundingText(1, 0);
+        }
+        send_text(String.valueOf(symbol));
+        _last_quick_key = null;
+        return true;
+      }
+    }
+    _last_quick_key = key;
+    _last_quick_time = now;
+    return false;
+  }
+
+  /** When the floating browser is open, keys go straight to it (no VIM
+      engine, no quick double-tap). [esc] closes the window. */
+  private void handle_overlay_key(KeyValue key)
+  {
+    if (key.getKind() == KeyValue.Kind.Keyevent
+        && key.getKeyevent() == KeyEvent.KEYCODE_ESCAPE)
+    {
+      _recv.close_float_panel();
+      return;
+    }
     switch (key.getKind())
     {
       case Char: send_text(String.valueOf(key.getChar())); break;
@@ -116,13 +231,11 @@ public final class KeyEventHandler
       case Keyevent: send_key_down_up(key.getKeyevent()); break;
       case Modifier: break;
       case Editing: handle_editing_key(key.getEditing()); break;
-      case Compose_pending: _recv.set_compose_pending(true); break;
       case Slider: handle_slider(key.getSlider(), key.getSliderRepeat(), false); break;
       case Macro: evaluate_macro(key.getMacro()); break;
       case Stateful: handle_stateful(key.getStateful()); break;
+      case Compose_pending: _recv.set_compose_pending(true); break;
     }
-    update_meta_state(old_mods);
-    _last_action = _next_last_action;
   }
 
   @Override
@@ -310,6 +423,21 @@ public final class KeyEventHandler
   }
 
   static ExtractedTextRequest _move_cursor_req = null;
+
+  static ExtractedTextRequest _full_text_req = null;
+
+  /** Query the full text of the editor. Returns an [ExtractedText] with a
+      non-null [text] field, or [null] if the editor doesn't support it. */
+  ExtractedText get_full_text(InputConnection conn)
+  {
+    if (_full_text_req == null)
+    {
+      _full_text_req = new ExtractedTextRequest();
+      _full_text_req.hintMaxChars = 200000;
+      _full_text_req.hintMaxLines = 0;
+    }
+    return conn.getExtractedText(_full_text_req, 0);
+  }
 
   /** Query the cursor position. The extracted text is empty. Returns [null] if
       the editor doesn't support this operation. */
@@ -571,6 +699,346 @@ public final class KeyEventHandler
     }
   }
 
+  // ---- Vim command mode ('o' is for commands) ----------------------------
+
+  /** Execute a command typed in the ':' command line. New commands are added
+      here, or through Lua scripts (see [LuaEngine]). The command line
+      currently returns to normal mode before executing, so commands are
+      single-shot. */
+  void execute_vim_command(String cmd)
+  {
+    String[] parts = cmd.split("\\s+", 2);
+    String name = parts[0].toLowerCase(Locale.ROOT);
+    String arg = (parts.length > 1) ? parts[1].trim() : "";
+    switch (name)
+    {
+      case "help": case "h":
+        _vim.flash_status("copy paste undo redo goto N upper lower title reload addlua rmlua float", VimEngine.STATUS_COLOR_CMD);
+        return;
+      case "copy": case "y": case "yank":
+        vim_copy_selection_or_line();
+        return;
+      case "paste": case "p":
+        vim_paste_clipboard();
+        return;
+      case "undo": case "u":
+        _recv.getHandler().post(new Runnable() { public void run() { send_context_menu_action(android.R.id.undo); } });
+        return;
+      case "redo":
+        _recv.getHandler().post(new Runnable() { public void run() { send_context_menu_action(android.R.id.redo); } });
+        return;
+      case "goto": case "line":
+        vim_goto_line(arg);
+        return;
+      case "upper": case "lower": case "title":
+        vim_transform_selection_or_line(name);
+        return;
+      case "reload":
+        _lua.reload();
+        _vim.flash_status(_lua.count_commands() + " lua commands", VimEngine.STATUS_COLOR_CMD);
+        return;
+      case "ls":
+        _vim.flash_status(join_names(_lua.command_names()), VimEngine.STATUS_COLOR_CMD);
+        return;
+      case "addlua":
+        vim_add_lua_script(arg);
+        return;
+      case "rmlua":
+        _lua.delete_script(arg);
+        return;
+      case "float": case "browser": case "br":
+        vim_float(arg);
+        return;
+      default:
+        if (!_lua.execute(name, arg))
+          _vim.flash_status("unknown command: " + name, VimEngine.STATUS_COLOR_CMD);
+        return;
+    }
+  }
+
+  /** Copy the content of the system clipboard to a Lua script file. */
+  void vim_add_lua_script(String name)
+  {
+    if (name.isEmpty())
+    {
+      _vim.flash_status("usage: addlua <name>", VimEngine.STATUS_COLOR_CMD);
+      return;
+    }
+    String content = get_clipboard_text();
+    if (content == null)
+    {
+      _vim.flash_status("clipboard empty", VimEngine.STATUS_COLOR_CMD);
+      return;
+    }
+    _lua.save_script(name, content);
+  }
+
+  String get_clipboard_text()
+  {
+    Context ctx = _recv.getApplicationContext();
+    if (ctx == null)
+      return null;
+    ClipboardManager cm = (ClipboardManager)ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+    if (cm == null || !cm.hasPrimaryClip())
+      return null;
+    ClipData clip = cm.getPrimaryClip();
+    if (clip == null || clip.getItemCount() == 0)
+      return null;
+    CharSequence cs = clip.getItemAt(0).coerceToText(ctx);
+    return (cs == null) ? null : cs.toString();
+  }
+
+  static String join_names(String[] names)
+  {
+    if (names.length == 0)
+      return "no lua commands";
+    StringBuilder b = new StringBuilder();
+    for (int i = 0; i < names.length; i++)
+    {
+      if (i > 0)
+        b.append(' ');
+      b.append(names[i]);
+    }
+    return b.toString();
+  }
+
+  /** Copy the current selection, or the whole line, to the system clipboard. */
+  void vim_copy_selection_or_line()
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    ExtractedText et = get_full_text(conn);
+    if (et == null || et.text == null)
+      return;
+    String text = et.text.toString();
+    int base = et.startOffset;
+    int s = et.selectionStart - base;
+    int e = et.selectionEnd - base;
+    if (s == e)
+    {
+      int ls = text.lastIndexOf('\n', s - 1) + 1;
+      if (ls < 0) ls = 0;
+      int le = text.indexOf('\n', s);
+      if (le < 0) le = text.length();
+      s = ls;
+      e = le;
+    }
+    if (e <= s || s < 0 || e > text.length())
+      return;
+    set_clipboard_text(text.substring(s, e));
+    _vim.flash_status((e - s) + " copied", VimEngine.STATUS_COLOR_CMD);
+  }
+
+  /** Paste the content of the system clipboard at the cursor. */
+  void vim_paste_clipboard()
+  {
+    Context ctx = _recv.getApplicationContext();
+    if (ctx == null)
+      return;
+    ClipboardManager cm = (ClipboardManager)ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+    if (cm == null || !cm.hasPrimaryClip())
+    {
+      _vim.flash_status("clipboard empty", VimEngine.STATUS_COLOR_CMD);
+      return;
+    }
+    ClipData clip = cm.getPrimaryClip();
+    if (clip == null || clip.getItemCount() == 0)
+      return;
+    CharSequence cs = clip.getItemAt(0).coerceToText(ctx);
+    if (cs == null)
+      return;
+    send_text(cs.toString());
+  }
+
+  /** Open or close the embedded floating web browser. */
+  void vim_float(String arg)
+  {
+    boolean was_open = _recv.is_float_open();
+    _recv.toggle_float_panel(arg);
+    String status = was_open ? "browser fechado" :
+      ("browser: " + (arg.isEmpty() ? "google" : arg));
+    _vim.flash_status(status, VimEngine.STATUS_COLOR_CMD);
+  }
+
+  /** Open the built-in help page (triggered with '?' in normal mode). */
+  void open_vim_help()
+  {
+    _recv.open_help();
+    _vim.flash_status("ajuda", VimEngine.STATUS_COLOR_CMD);
+  }
+
+  /** Build the HTML help page listing the VIM shortcuts and the ':' commands. */
+  static String vim_help_html()
+  {
+    StringBuilder b = new StringBuilder();
+    b.append("<!DOCTYPE html><html><head><meta charset=\"utf-8\">");
+    b.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+    b.append("<style>body{background:#1d2021;color:#ebdbb2;font-family:monospace;margin:16px;font-size:15px;line-height:1.6}");
+    b.append("h1{color:#fe8019;font-size:20px;margin:4px 0}h2{color:#83a598;font-size:16px;margin:20px 0 8px}");
+    b.append("kbd{background:#3c3836;color:#fb4934;padding:1px 6px;border-radius:3px;font-weight:bold}");
+    b.append(".dim{color:#a89984}hr{border:0;border-top:1px solid #3c3836}</style></head><body>");
+    b.append("<h1>vi_key &mdash; ajuda</h1>");
+    b.append("<p class=\"dim\">Digite qualquer coisa na barra acima para navegar. " +
+        "<kbd>esc</kbd> fecha esta janela.</p><hr>");
+
+    b.append("<h2>Modo NORMAL &mdash; movimento</h2>");
+    b.append("<p><kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd> &rarr; mover esquerda / baixo / cima / direita</p>");
+    b.append("<p><kbd>w</kbd> <kbd>b</kbd> <kbd>e</kbd> &rarr; palavra: pr&oacute;xima / anterior / fim</p>");
+    b.append("<p><kbd>0</kbd> <kbd>$</kbd> &rarr; in&iacute;cio / fim da linha</p>");
+    b.append("<p><kbd>gg</kbd> &rarr; in&iacute;cio do documento &middot; <kbd>G</kbd> &rarr; fim &middot; <kbd>N</kbd><kbd>G</kbd> &rarr; linha N</p>");
+
+    b.append("<h2>Modo NORMAL &mdash; edi&ccedil;&atilde;o</h2>");
+    b.append("<p><kbd>i</kbd> &rarr; voltar ao modo INSERT</p>");
+    b.append("<p><kbd>o</kbd> / <kbd>O</kbd> &rarr; nova linha abaixo / acima e entrar em INSERT</p>");
+    b.append("<p><kbd>x</kbd> &rarr; apagar caractere</p>");
+    b.append("<p><kbd>d</kbd><kbd>d</kbd> linha &middot; <kbd>d</kbd><kbd>w</kbd> palavra &middot; <kbd>d</kbd><kbd>e</kbd> fim palavra &middot; <kbd>d</kbd><kbd>0</kbd> / <kbd>d</kbd><kbd>$</kbd> at&eacute; in&iacute;cio/fim da linha</p>");
+    b.append("<p><kbd>u</kbd> desfazer &middot; <kbd>Ctrl</kbd>+<kbd>r</kbd> refazer</p>");
+
+    b.append("<h2>Busca</h2>");
+    b.append("<p><kbd>/</kbd> &rarr; busca incremental &middot; <kbd>n</kbd> / <kbd>N</kbd> &rarr; pr&oacute;ximo / anterior resultado</p>");
+
+    b.append("<h2>Mudan&ccedil;a de modo</h2>");
+    b.append("<p><kbd>esc</kbd> ou <kbd>j</kbd><kbd>k</kbd> (no INSERT) &rarr; modo NORMAL</p>");
+    b.append("<p>Contagens funcionam: <kbd>3j</kbd>, <kbd>2dd</kbd>, <kbd>5w</kbd>&hellip;</p>");
+    b.append("<p class=\"dim\">No INSERT, toque duplo r&aacute;pido de uma tecla digita o s&iacute;mbolo dela (sw); deslize para o canto tamb&eacute;m.</p>");
+
+    b.append("<h2>Comandos <kbd>:</kbd></h2>");
+    String[][] cmds = {
+      {"copy (y, yank)", "copia a sele&ccedil;&atilde;o (ou a linha inteira)"},
+      {"paste (p)", "cola o clipboard"},
+      {"undo (u) / redo", "desfazer / refazer"},
+      {"goto N (line N)", "vai para a linha N"},
+      {"upper / lower / title", "caixa da sele&ccedil;&atilde;o ou linha"},
+      {"reload", "recarrega os scripts Lua"},
+      {"ls", "lista os comandos Lua"},
+      {"addlua &lt;nome&gt;", "salva o clipboard como script Lua"},
+      {"rmlua &lt;nome&gt;", "remove um script Lua"},
+      {"float &lt;url&gt; / browser / br", "abre o navegador (esc fecha)"},
+      {"help (h)", "mostra esta ajuda"},
+    };
+    for (String[] c : cmds)
+      b.append("<p><kbd>:").append(c[0]).append("</kbd> &mdash; ").append(c[1]).append("</p>");
+    b.append("</body></html>");
+    return b.toString();
+  }
+
+  /** Move the cursor to the start of line [arg] (1-indexed). */
+  void vim_goto_line(String arg)
+  {
+    int line;
+    try { line = Integer.parseInt(arg); }
+    catch (NumberFormatException _e)
+    {
+      _vim.flash_status("usage: goto N", VimEngine.STATUS_COLOR_CMD);
+      return;
+    }
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    ExtractedText et = get_full_text(conn);
+    if (et == null || et.text == null)
+      return;
+    String text = et.text.toString();
+    int off = 0;
+    int n = 1;
+    while (n < line)
+    {
+      int i = text.indexOf('\n', off);
+      if (i < 0)
+      {
+        off = text.length();
+        break;
+      }
+      off = i + 1;
+      n++;
+    }
+    int abs = et.startOffset + off;
+    conn.setSelection(abs, abs);
+  }
+
+  /** Change the case of the current selection, or of the whole line. */
+  void vim_transform_selection_or_line(String mode)
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    ExtractedText et = get_full_text(conn);
+    if (et == null || et.text == null)
+      return;
+    String text = et.text.toString();
+    int base = et.startOffset;
+    int s = et.selectionStart - base;
+    int e = et.selectionEnd - base;
+    if (s == e)
+    {
+      int ls = text.lastIndexOf('\n', s - 1) + 1;
+      if (ls < 0) ls = 0;
+      int le = text.indexOf('\n', s);
+      if (le < 0) le = text.length();
+      s = ls;
+      e = le;
+    }
+    if (e <= s || s < 0 || e > text.length())
+      return;
+    String sel = text.substring(s, e);
+    String res;
+    if (mode.equals("upper"))
+      res = sel.toUpperCase(Locale.ROOT);
+    else if (mode.equals("lower"))
+      res = sel.toLowerCase(Locale.ROOT);
+    else
+      res = titlize(sel);
+    replace_surrounding_text_abs(base + s, e - s, res);
+  }
+
+  /** Replace the [len] characters right before the absolute position [abs]
+      with [replace], leaving the cursor after it. */
+  void replace_surrounding_text_abs(int abs, int len, String replace)
+  {
+    InputConnection conn = _recv.getCurrentInputConnection();
+    if (conn == null)
+      return;
+    conn.setSelection(abs, abs);
+    if (len > 0)
+      conn.deleteSurroundingText(len, 0);
+    conn.commitText(replace, 1);
+  }
+
+  /** Uppercase the first letter of every word, lowercase the rest. */
+  static String titlize(String s)
+  {
+    StringBuilder out = new StringBuilder(s.length());
+    boolean word_start = true;
+    for (int i = 0; i < s.length(); i++)
+    {
+      char c = s.charAt(i);
+      if (Character.isWhitespace(c))
+      {
+        out.append(c);
+        word_start = true;
+      }
+      else if (word_start)
+      {
+        out.append(Character.toUpperCase(c));
+        word_start = false;
+      }
+      else
+        out.append(Character.toLowerCase(c));
+    }
+    return out.toString();
+  }
+
+  void set_clipboard_text(String text)
+  {
+    Context ctx = _recv.getApplicationContext();
+    if (ctx == null)
+      return;
+    ClipboardManager cm = (ClipboardManager)ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+    if (cm != null)
+      cm.setPrimaryClip(ClipData.newPlainText("vim", text));
+  }
+
   public static interface IReceiver extends Suggestions.Callback
   {
     public void handle_event_key(KeyValue.Event ev);
@@ -579,6 +1047,17 @@ public final class KeyEventHandler
     public void selection_state_changed(boolean selection_is_ongoing);
     public InputConnection getCurrentInputConnection();
     public Handler getHandler();
+    public Context getApplicationContext();
+    /** Update the VIM mode status bar. */
+    public void set_vim_status(String text, int color);
+    /** Whether the embedded floating web browser panel is open. */
+    public boolean is_float_open();
+    /** Open or close the embedded floating web browser panel. */
+    public void toggle_float_panel(String url);
+    /** Close the embedded floating web browser panel. */
+    public void close_float_panel();
+    /** Open the built-in VIM/command help page. */
+    public void open_help();
   }
 
   class Autocapitalisation_callback implements Autocapitalisation.Callback

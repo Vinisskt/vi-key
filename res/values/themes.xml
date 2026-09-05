@@ -352,7 +352,7 @@
     <item name="emoji_button_bg">#343746</item>
     <item name="emoji_color">#F8F8F2</item>
   </style>
-  <style name="GradientPurplePink" parent="BaseTheme">
+<style name="GradientPurplePink" parent="BaseTheme">
     <item name="android:isLightTheme">false</item>
     <item name="colorKeyboard">#251A3A</item>
     <item name="keyboardGradientStart">#8A2BE2</item>
@@ -371,5 +371,27 @@
     <item name="keyBorderWidthActivated">0dp</item>
     <item name="emoji_button_bg">#3B2D50</item>
     <item name="emoji_color">#FFFFFF</item>
+  </style>
+  <style name="Gruvbox" parent="BaseTheme">
+    <item name="android:isLightTheme">false</item>
+    <item name="colorKeyboard">#1d2021</item>
+    <item name="colorKey">#282828</item>
+    <item name="colorKeyActivated">#4d4845</item>
+    <item name="colorKeyAction">#3c3836</item>
+    <item name="colorKeySpaceBar">#2e2b29</item>
+    <item name="keyBorderWidth">0.8dp</item>
+    <item name="keyBorderWidthActivated">0.8dp</item>
+    <item name="keyBorderColorLeft">#30302f</item>
+    <item name="keyBorderColorTop">#3c3836</item>
+    <item name="keyBorderColorRight">#30302f</item>
+    <item name="keyBorderColorBottom">#0f0f10</item>
+    <item name="keyBorderRadius">6dp</item>
+    <item name="colorLabel">#ebdbb2</item>
+    <item name="colorLabelActivated">#83a598</item>
+    <item name="colorLabelPressed">#fabd2f</item>
+    <item name="colorLabelLocked">#8ec07c</item>
+    <item name="colorSubLabel">#d5c4a1</item>
+    <item name="emoji_button_bg">#32302f</item>
+    <item name="emoji_color">#ebdbb2</item>
   </style>
 </resources>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Vim Programmer layout.
+
+  A programming-oriented QWERTY layout with a number row, exactly one special
+  character per key (the [sw] sublabel, bottom-left corner) and a bottom row
+  featuring Ctrl, Tab, Esc, cursor arrows and Enter. It is intended to be used
+  with the built-in Vim engine: in insert mode the letters are typed normally,
+  in normal mode [h j k l], [w b e], [0 $], [gg G], [d], [x], [u], [i], [jk]
+  and [/] are interpreted as Vim commands. Press [esc] (or type [jk]) to
+  switch to normal mode and [i] to go back to insert mode.
+
+  Because the layout has the [quick_tap] attribute, in insert mode a quick
+  double-tap of a key types its special character ([sw]) instead of the
+  character twice. It can also still be reached with a swipe towards the
+  bottom-left corner of the key.
+-->
+<keyboard name="Vim Programmer" script="latin" bottom_row="false" embedded_number_row="true" quick_tap="true">
+  <row height="0.72">
+    <key c="1" sw="!"/>
+    <key c="2" sw="\@"/>
+    <key c="3" sw="\#"/>
+    <key c="4" sw="$"/>
+    <key c="5" sw="%"/>
+    <key c="6" sw="^"/>
+    <key c="7" sw="&amp;"/>
+    <key c="8" sw="*"/>
+    <key c="9" sw="("/>
+    <key c="0" sw=")"/>
+  </row>
+  <row>
+    <key c="q" sw="&lt;"/>
+    <key c="w" sw="("/>
+    <key c="e" sw="["/>
+    <key c="r" sw="{"/>
+    <key c="t" sw="/"/>
+    <key c="y" sw="&amp;"/>
+    <key c="u" sw="*"/>
+    <key c="i" sw="-"/>
+    <key c="o" sw="="/>
+    <key c="p" sw=":"/>
+  </row>
+  <row>
+    <key shift="0.5" c="a" sw="&quot;"/>
+    <key c="s" sw="'"/>
+    <key c="d" sw=";"/>
+    <key c="f" sw="\?"/>
+    <key c="g" sw="_"/>
+    <key c="h" sw="+"/>
+    <key c="j" sw="{"/>
+    <key c="k" sw="["/>
+    <key c="l" sw="\\"/>
+  </row>
+  <row>
+    <key width="1.5" role="action" c="shift"/>
+    <key c="z" sw="`"/>
+    <key c="x" sw="~"/>
+    <key c="c" sw="."/>
+    <key c="v" sw=","/>
+    <key c="b" sw="/"/>
+    <key c="n" sw="|"/>
+    <key c="m" sw="!"/>
+    <key width="1.5" role="action" c="backspace" ne="delete"/>
+  </row>
+  <row height="0.95">
+    <key width="1.7" role="action" key0="ctrl" key1="loc switch_greekmath" key2="loc meta" key3="loc switch_clipboard" key4="switch_numeric"/>
+    <key width="1.1" role="action" key0="tab"/>
+    <key width="1.1" role="action" key0="esc"/>
+    <key width="3.3" role="space_bar" key0="space" key7="switch_forward" key8="switch_backward" key5="cursor_left" key6="cursor_right"/>
+    <key width="1.1" role="action" key0="up" key5="left" key6="right" key8="down"/>
+    <key width="1.7" role="action" key0="enter"/>
+  </row>
+</keyboard>

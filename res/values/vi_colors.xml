@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Gruvbox dark palette reused by the app UI (launcher, settings).
+       Keep in sync with the "Gruvbox" keyboard theme in themes.xml. -->
+  <color name="vi_bg">#1d2021</color>
+  <color name="vi_bg_soft">#282828</color>
+  <color name="vi_panel">#32302f</color>
+  <color name="vi_border">#3c3836</color>
+  <color name="vi_ink">#ebdbb2</color>
+  <color name="vi_ink_dim">#a89984</color>
+  <color name="vi_ink_faint">#928374</color>
+  <color name="vi_accent">#d65d0e</color>
+  <color name="vi_blue">#83a598</color>
+  <color name="vi_green">#8ec07c</color>
+  <color name="vi_yellow">#fabd2f</color>
+  <color name="vi_red">#fb4934</color>
+</resources>

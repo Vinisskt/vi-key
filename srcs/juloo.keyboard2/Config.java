@@ -143,6 +143,12 @@ public final class Config
       keyboardHeightPercent = _prefs.getInt(foldable_unfolded ? "keyboard_height_unfolded" : "keyboard_height", 35);
     }
     layouts = LayoutsPreference.load_from_preferences(res, _prefs);
+    // Force the Vim Programmer layout to be the primary layout so the built-in
+    // Vim engine and its [quick_tap] symbols are active by default, even after
+    // a fresh install or a wiped preference.
+    int vim_layout = LayoutsPreference.layout_id_of_name(res, "vim_prog");
+    if (vim_layout >= 0)
+      layouts.add(0, KeyboardData.load(res, vim_layout));
     inverse_numpad = _prefs.getString("numpad_layout", "default").equals("low_first");
     String number_row = _prefs.getString("number_row", "no_number_row");
     add_number_row = !number_row.equals("no_number_row");
@@ -281,6 +287,7 @@ public final class Config
       case "epaperblack": return R.style.ePaperBlack;
       case "dracula": return R.style.Dracula;
       case "gradientpurplepink": return R.style.GradientPurplePink;
+      case "gruvbox": return R.style.Gruvbox;
       default:
       case "system":
         if ((night_mode & Configuration.UI_MODE_NIGHT_NO) != 0)
@@ -336,6 +343,9 @@ public final class Config
     public void key_up(KeyValue value, Pointers.Modifiers mods);
     public void mods_changed(Pointers.Modifiers mods);
     public void suggestion_entered(String text);
+    /** Called when the keyboard changes to provide the mapping of the quick
+        double-tap feature. Default implementation does nothing. */
+    default public void quick_tap_symbols(Map<Character, Character> symbols) {}
   }
 
   /** Config migrations. */

@@ -9,6 +9,8 @@ dependencies {
   // Following versions of androidx.window require sdk version 23
   implementation("androidx.window:window-java:1.4.0")
   implementation("androidx.core:core:1.16.0") // Version 1.17.0 available with sdk 36
+  // Pure-java Lua interpreter used for the ':command' scripts.
+  implementation("org.luaj:luaj-jse:3.0.1")
   testImplementation("junit:junit:4.13.2")
 }
 
@@ -20,8 +22,8 @@ android {
     applicationId = "juloo.keyboard2"
     minSdk = 21
     targetSdk { version = release(36) }
-    versionCode = 55
-    versionName = "2.0.4"
+    versionCode = 74
+    versionName = "vi_key-18"
   }
 
   sourceSets {
@@ -34,12 +36,6 @@ android {
 
     named("test") {
       java.srcDirs("test")
-    }
-  }
-
-  externalNativeBuild {
-    ndkBuild {
-      path = file("vendor/Android.mk")
     }
   }
 
