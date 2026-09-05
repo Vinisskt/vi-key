@@ -16,7 +16,7 @@ public class KeyValueTest
     assertEquals(str("Foo").withSymbol("Symbol"),
         KeyValue.makeMacro("Symbol", new KeyValue[] { str("Foo") }, 0));
     assertEquals(KeyValue.getSpecialKeyByName("tab"),
-        KeyValue.keyeventKey(0xE00F, KeyEvent.KEYCODE_TAB, KeyValue.FLAG_KEY_FONT | KeyValue.FLAG_SMALLER_FONT));
+        KeyValue.keyeventKey(0xF03C, KeyEvent.KEYCODE_TAB, KeyValue.FLAG_KEY_FONT | KeyValue.FLAG_SMALLER_FONT));
     assertEquals(KeyValue.getSpecialKeyByName("tab").withSymbol("t"),
         KeyValue.keyeventKey("t", KeyEvent.KEYCODE_TAB, 0));
     assertEquals(KeyValue.getSpecialKeyByName("tab").withSymbol("tab"),
