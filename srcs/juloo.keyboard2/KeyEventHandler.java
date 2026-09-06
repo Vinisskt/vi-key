@@ -742,7 +742,7 @@ public final class KeyEventHandler
         if (_lua == null)
           break;
         _lua.reload();
-        _vim.flash_status(_lua.count_commands() + " lua commands", VimEngine.STATUS_COLOR_CMD);
+        _vim.flash_status(_lua.count_commands() + " lua commands (" + _lua.current_dir() + ")", VimEngine.STATUS_COLOR_CMD);
         return;
       case "ls":
         _vim.flash_status((_lua == null) ? "" : join_names(_lua.command_names()), VimEngine.STATUS_COLOR_CMD);

@@ -7,6 +7,11 @@
     <string name="pref_portrait">No modo retrato</string>
     <string name="pref_landscape">No modo paisagem</string>
     <string name="pref_category_layout">Layout</string>
+    <string name="pref_lua_scripts_title">Scripts Lua</string>
+    <string name="pref_lua_scripts_summary">Scripts em [keyboard-lua] viram comandos (:&lt;nome-sem-lua&gt;). Toque para conceder acesso a todos os arquivos.</string>
+    <string name="pref_lua_scripts_folder">Pasta de scripts: /sdcard/keyboard-lua</string>
+    <string name="pref_lua_scripts_granted">Acesso a todos os arquivos concedido</string>
+    <string name="pref_lua_scripts_grant">Toque para conceder acesso a todos os arquivos</string>
     <string name="pref_label_brightness">Ajustar brilho dos rótulos</string>
     <string name="pref_keyboard_opacity">Ajustar opacidade do fundo do teclado</string>
     <string name="pref_key_opacity">Ajustar opacidade das teclas</string>

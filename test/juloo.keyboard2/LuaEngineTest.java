@@ -60,8 +60,8 @@ public class LuaEngineTest extends VimTestBase
     write_script("a.lua",
         "vim.register('hello', function(args) vim.status('hello ' .. args) end)");
     lua.reload();
-    assertEquals(1, lua.count_commands());
-    assertArrayEquals(new String[] { "hello" }, lua.command_names());
+    assertEquals(2, lua.count_commands());
+    assertArrayEquals(new String[] { "a", "hello" }, lua.command_names());
     assertTrue(lua.execute("hello", "world"));
     assertTrue(_receiver.lastStatus().startsWith("hello world"));
   }
@@ -73,7 +73,7 @@ public class LuaEngineTest extends VimTestBase
     write_script("a.lua",
         "vim.register('zeta', function() end)\nvim.register('alpha', function() end)");
     lua.reload();
-    assertArrayEquals(new String[] { "alpha", "zeta" }, lua.command_names());
+    assertArrayEquals(new String[] { "a", "alpha", "zeta" }, lua.command_names());
   }
 
   @Test
@@ -196,7 +196,7 @@ public class LuaEngineTest extends VimTestBase
     write_script("b.lua", "vim.register('q', function() vim.status('b') end)");
     write_script("a.lua", "vim.register('p', function() vim.status('a') end)");
     lua.reload();
-    assertArrayEquals(new String[] { "p", "q" }, lua.command_names());
+    assertArrayEquals(new String[] { "a", "b", "p", "q" }, lua.command_names());
   }
 
   @Test
@@ -276,7 +276,9 @@ public class LuaEngineTest extends VimTestBase
     new_engine();
     write_script("a.lua", "vim.register('', function() vim.status('x') end)");
     lua.reload();
-    assertEquals(0, lua.count_commands());
+    // The empty [vim.register] name is ignored; only the file command remains.
+    assertEquals(1, lua.count_commands());
+    assertArrayEquals(new String[] { "a" }, lua.command_names());
   }
 
   @Test
@@ -285,7 +287,59 @@ public class LuaEngineTest extends VimTestBase
     new_engine();
     write_script("a.lua", "vim.register('notfunc', 42)");
     lua.reload();
-    assertEquals(0, lua.count_commands());
+    assertEquals(1, lua.count_commands());
+    assertArrayEquals(new String[] { "a" }, lua.command_names());
+  }
+
+  @Test
+  public void file_name_is_a_command()
+  {
+    new_engine();
+    write_script("greet.lua", "local a = ... vim.status('greet ' .. tostring(a))");
+    lua.reload();
+    assertTrue(lua.execute("greet", "world"));
+    assertTrue(_receiver.lastStatus().startsWith("greet world"));
+  }
+
+  @Test
+  public void file_command_without_arguments()
+  {
+    new_engine();
+    write_script("greet.lua", "local a = ... vim.status('greet ' .. tostring(a))");
+    lua.reload();
+    assertTrue(lua.execute("greet", ""));
+    assertTrue(_receiver.lastStatus().startsWith("greet nil"));
+  }
+
+  @Test
+  public void command_name_drops_lua_suffix_and_lowercases()
+  {
+    new_engine();
+    write_script("MyScript.lua", "vim.status('ran')");
+    lua.reload();
+    assertArrayEquals(new String[] { "myscript" }, lua.command_names());
+    assertTrue(lua.execute("myscript", ""));
+    assertTrue(_receiver.lastStatus().startsWith("ran"));
+  }
+
+  @Test
+  public void script_registered_command_takes_precedence_over_file_name()
+  {
+    new_engine();
+    write_script("cmd.lua",
+        "vim.register('cmd', function() vim.status('registered') end)");
+    lua.reload();
+    assertTrue(lua.execute("cmd", ""));
+    assertTrue(_receiver.lastStatus().startsWith("registered"));
+  }
+
+  @Test
+  public void top_level_code_runs_at_startup()
+  {
+    new_engine();
+    write_script("boot.lua", "vim.status('booted')");
+    lua.reload();
+    assertTrue(_receiver.lastStatus().startsWith("booted"));
   }
 
   @Test

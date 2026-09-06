@@ -12,6 +12,7 @@
     <ListPreference android:key="show_numpad" android:title="@string/pref_show_numpad_title" android:summary="%s" android:defaultValue="1" android:entries="@array/pref_show_numpad_entries" android:entryValues="@array/pref_show_numpad_values"/>
     <ListPreference android:key="numpad_layout" android:title="@string/pref_numpad_layout" android:summary="%s" android:defaultValue="high_first" android:entries="@array/pref_numpad_layout_entries" android:entryValues="@array/pref_numpad_layout_values"/>
     <ListPreference android:key="split_layout" android:title="@string/pref_split_layout" android:summary="%s" android:defaultValue="wide" android:entries="@array/pref_split_layout_entries" android:entryValues="@array/pref_split_layout_values"/>
+    <Preference android:key="lua_scripts" android:title="@string/pref_lua_scripts_title" android:summary="@string/pref_lua_scripts_grant"/>
   </PreferenceCategory>
   <PreferenceCategory android:title="@string/pref_category_suggestions">
     <CheckBoxPreference android:key="suggestions" android:title="@string/pref_suggestions_title" android:summary="@string/pref_suggestions_summary" android:defaultValue="true"/>

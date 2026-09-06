@@ -9,6 +9,11 @@
     <string name="pref_landscape">In landscape mode</string>
     <string name="pref_landscape_unfolded">In landscape mode unfolded</string>
     <string name="pref_category_layout">Layout</string>
+    <string name="pref_lua_scripts_title">Lua scripts</string>
+    <string name="pref_lua_scripts_summary">Scripts in [keyboard-lua] are run as commands (:&lt;filename-without-lua&gt;). Tap to grant All files access.</string>
+    <string name="pref_lua_scripts_folder">Scripts folder: /sdcard/keyboard-lua</string>
+    <string name="pref_lua_scripts_granted">All files access granted</string>
+    <string name="pref_lua_scripts_grant">Tap to grant All files access</string>
     <string name="pref_label_brightness">Adjust label brightness</string>
     <string name="pref_keyboard_opacity">Adjust keyboard background opacity</string>
     <string name="pref_key_opacity">Adjust key opacity</string>
