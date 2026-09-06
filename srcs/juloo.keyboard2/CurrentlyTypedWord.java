@@ -59,9 +59,13 @@ public final class CurrentlyTypedWord
 
   public void started(Config conf, InputConnection ic)
   {
+    started(conf.editor_config, ic);
+  }
+
+  void started(EditorConfig e, InputConnection ic)
+  {
     _ic = ic;
     _enabled = true;
-    EditorConfig e = conf.editor_config;
     _has_selection = e.initial_sel_start != e.initial_sel_end;
     _cursor = e.initial_sel_start;
     _w_cursor = 0;
