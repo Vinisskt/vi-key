@@ -173,6 +173,16 @@ public class CurrentlyTypedWordTest
   }
 
   @Test
+  public void del_with_other_meta_schedules_a_refresh()
+  {
+    start_word();
+    _word.typed("hello");
+    _word.event_sent(KeyEvent.KEYCODE_DEL, KeyEvent.META_SHIFT_ON);
+    assertEquals("hello", _word.get());
+    assertTrue(_word._refresh_pending);
+  }
+
+  @Test
   public void other_key_event_schedules_a_refresh()
   {
     start_word();
@@ -223,5 +233,39 @@ public class CurrentlyTypedWordTest
     _word.selection_updated(3, 1, 2);
     assertTrue(_word.is_selection_not_empty());
     assertEquals("", _word.get());
+  }
+
+  @Test
+  public void remove_after_cursor_does_not_touch_the_word()
+  {
+    start_word();
+    _word.typed("hello");
+    // Removing text after the cursor leaves the word buffer unchanged but
+    // shifts the relative cursor.
+    _word.remove_surrounding_text(0, 2);
+    assertEquals("hello", _word.get());
+    assertEquals(-2, _word._w_cursor);
+    assertEquals(5, _word._cursor);
+  }
+
+  @Test
+  public void typed_before_started_is_ignored()
+  {
+    _word.typed("abc");
+    assertEquals("", _word.get());
+    assertEquals(0, _cb.words.size());
+  }
+
+  @Test
+  public void cursor_moved_backward_within_the_word()
+  {
+    start_word();
+    _word.typed("hello"); // word length 5, cursor 5
+    // Move the cursor to the middle of the word (still inside it).
+    _ic.set_text("hello", 5, 5);
+    _word.selection_updated(5, 3, 3);
+    assertEquals(3, _word._cursor);
+    assertEquals(-2, _word.cursor_relative());
+    assertEquals("hello", _word.get());
   }
 }

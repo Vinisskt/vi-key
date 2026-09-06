@@ -3,6 +3,8 @@ package juloo.keyboard2;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.KeyEvent;
+import android.view.inputmethod.InputConnection;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
@@ -185,6 +187,71 @@ public class AutocapitalisationTest
     assertFalse(_cap._should_enable_shift);
     flush();
     assertTrue(last_disable());
+  }
+
+  @Test
+  public void moving_to_the_beginning_with_text_after_does_not_reset_caps()
+  {
+    start_caps();
+    _ic.set_text("hello", 5, 5);
+    _cap._cursor = 5;
+    _cap.selection_updated(5, 0);
+    assertEquals(0, _cap._cursor);
+    assertFalse(_cap._should_update_caps_mode); // Text remains after the cursor.
+    flush();
+    assertFalse(last_enable());
+  }
+
+  @Test
+  public void moving_to_a_cleared_editor_asks_for_a_new_caps_state()
+  {
+    start_caps();
+    // An empty editor reports null from getTextAfterCursor, which is not
+    // treated as a cleared box (only an empty string is).
+    _ic.set_text("", 0, 0);
+    _cap._cursor = 4;
+    _cap.selection_updated(4, 0);
+    assertEquals(0, _cap._cursor);
+    assertFalse(_cap._should_update_caps_mode);
+    assertFalse(_cap._should_enable_shift);
+  }
+
+  @Test
+  public void flush_queries_the_editor_for_the_caps_mode()
+  {
+    start_caps();
+    _cap._should_update_caps_mode = true;
+    _cap._should_enable_shift = true;
+    flush();
+    // The fake editor has no caps mode, so shift is disabled.
+    assertFalse(_cap._should_enable_shift);
+    assertFalse(_cap._should_update_caps_mode);
+  }
+
+  static final class EmptyAfterEditor
+  {
+    static InputConnection of()
+    {
+      final FakeInputConnection base = new FakeInputConnection();
+      return (InputConnection)Proxy.newProxyInstance(
+          InputConnection.class.getClassLoader(),
+          new Class[] { InputConnection.class },
+          (proxy, method, args) -> {
+            if (method.getName().equals("getTextAfterCursor"))
+              return "";
+            return method.invoke(base, args);
+          });
+    }
+  }
+
+  @Test
+  public void moving_to_the_beginning_of_a_cleared_box_resets_caps()
+  {
+    // An editor with an empty string after the cursor is treated as cleared.
+    _cap.started(true, caps_config(true, false), EmptyAfterEditor.of());
+    _cap._cursor = 4;
+    _cap.selection_updated(4, 0);
+    assertTrue(_cap._should_update_caps_mode);
   }
 
   @Test
