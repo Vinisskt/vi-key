@@ -1,5 +1,6 @@
 package juloo.keyboard2;
 
+import android.content.res.Resources;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.view.inputmethod.EditorInfo;
@@ -13,14 +14,23 @@ public class EditorConfigTest
 {
   static EditorConfig refresh(int inputType, int options)
   {
+    return refresh(inputType, options, null);
+  }
+
+  static EditorConfig refresh(int inputType, int options, Resources res)
+  {
     EditorConfig ec = new EditorConfig();
     EditorInfo info = new EditorInfo();
     info.inputType = inputType;
     info.imeOptions = options;
     info.packageName = "com.example.editor";
-    ec.refresh(info, null);
+    ec.refresh(info, res);
     return ec;
   }
+
+  static final Resources res = new Resources(null, null, null) {
+    @Override public String getString(int id) { return "action"; }
+  };
 
   @Test
   public void action_label_sets_action_key()
@@ -117,5 +127,64 @@ public class EditorConfigTest
     ec.refresh(info, null);
     assertEquals(3, ec.initial_sel_start);
     assertEquals(5, ec.initial_sel_end);
+  }
+
+  @Test
+  public void action_label_with_no_enter_action_keeps_enter_key()
+  {
+    // imeAction DONE maps to a label via resources; NO_ENTER_ACTION swaps back
+    // to a plain ENTER without an enter replacement.
+    EditorConfig ec = refresh(InputType.TYPE_CLASS_TEXT,
+        EditorInfo.IME_ACTION_DONE | EditorInfo.IME_FLAG_NO_ENTER_ACTION, res);
+    assertNotNull(ec.action_key_replacement);
+    assertNull(ec.enter_key_replacement);
+  }
+
+  @Test
+  public void action_label_swaps_enter_when_no_flag()
+  {
+    // imeAction DONE maps to a label; without the NO_ENTER_ACTION flag the
+    // enter and action keys are swapped.
+    EditorConfig ec = refresh(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_ACTION_DONE, res);
+    assertNotNull(ec.enter_key_replacement);
+    assertNotNull(ec.action_key_replacement);
+  }
+
+  @Test
+  public void caps_not_updated_for_uri_variation()
+  {
+    EditorConfig ec = new EditorConfig();
+    EditorInfo info = new EditorInfo();
+    info.inputType = InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI;
+    info.packageName = "com.example";
+    ec.refresh(info, null);
+    assertFalse(ec.caps_initially_updated);
+  }
+
+  @Test
+  public void caps_not_updated_for_phone_class()
+  {
+    EditorConfig ec = new EditorConfig();
+    EditorInfo info = new EditorInfo();
+    info.inputType = InputType.TYPE_CLASS_PHONE;
+    info.packageName = "com.example";
+    ec.refresh(info, null);
+    assertFalse(ec.caps_initially_updated);
+  }
+
+  @Test
+  public void enter_replacement_set_for_next_action()
+  {
+    // IME_ACTION_NEXT maps to a label, so the enter key is replaced.
+    assertNotNull(refresh(InputType.TYPE_CLASS_TEXT,
+        EditorInfo.IME_ACTION_NEXT, res).enter_key_replacement);
+  }
+
+  @Test
+  public void password_numeric_input_type_forces_fallback()
+  {
+    int variation = InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD
+        | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+    assertTrue(refresh(variation, 0).should_move_cursor_force_fallback);
   }
 }
