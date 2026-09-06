@@ -131,6 +131,12 @@ public class LuaEngineTest extends VimTestBase
     lua.execute("sub", "Z");
     // replace(1, 3, "Z") -> delete chars [1,3), insert "Z".
     assertEquals("aZdef", _conn.text());
+    // Replacement must not rely on deleteSurroundingText: commitText over the
+    // selection replaces it, which works even when the editor ignores the
+    // after length (e.g. Termux).
+    assertTrue(_conn.deletions.isEmpty());
+    assertEquals(2, _conn.selStart());
+    assertEquals(2, _conn.selEnd());
   }
 
   @Test

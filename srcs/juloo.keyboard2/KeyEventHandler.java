@@ -1002,16 +1002,17 @@ public final class KeyEventHandler
     replace_surrounding_text_abs(base + s, e - s, res);
   }
 
-  /** Replace the [len] characters right before the absolute position [abs]
-      with [replace], leaving the cursor after it. */
+  /** Replace the [len] characters starting at absolute position [abs] with
+      [replace], leaving the cursor after it. This uses [InputConnection.setSelection]
+      plus [InputConnection.commitText], which replaces the selection. That works
+      in editors whose [InputConnection.deleteSurroundingText] ignores the after
+      length or can't touch the selection contents (e.g. Termux). */
   void replace_surrounding_text_abs(int abs, int len, String replace)
   {
     InputConnection conn = _recv.getCurrentInputConnection();
     if (conn == null)
       return;
-    conn.setSelection(abs, abs);
-    if (len > 0)
-      conn.deleteSurroundingText(0, len);
+    conn.setSelection(abs, abs + len);
     conn.commitText(replace, 1);
   }
 

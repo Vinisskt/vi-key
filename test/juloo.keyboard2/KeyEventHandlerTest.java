@@ -255,6 +255,9 @@ public class KeyEventHandlerTest extends VimTestBase
     press("r");
     press("enter");
     assertEquals("AB CD", _conn.text());
+    assertTrue(_conn.deletions.isEmpty());
+    assertEquals("AB CD".length(), _conn.selStart());
+    assertEquals("AB CD".length(), _conn.selEnd());
   }
 
   @Test

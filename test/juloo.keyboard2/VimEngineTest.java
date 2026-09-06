@@ -359,6 +359,13 @@ public class VimEngineTest extends VimTestBase
     assertEquals(":upper", lastStatusText());
     press("enter");
     assertEquals("HELLO world", _conn.text());
+    // The replacement must go through commitText over the selection, without
+    // deleteSurroundingText (whose after length is ignored by some editors,
+    // e.g. Termux), so the original text is actually removed.
+    assertTrue("expected selection to be replaced in place",
+        _conn.deletions.isEmpty());
+    assertEquals("HELLO".length(), _conn.selStart());
+    assertEquals("HELLO".length(), _conn.selEnd());
   }
 
   @Test
@@ -374,6 +381,11 @@ public class VimEngineTest extends VimTestBase
     press("r");
     press("enter");
     assertEquals("ab cd", _conn.text());
+    // Same as colon_upper_transforms_selection: in-place replacement, no
+    // deleteSurroundingText, cursor ends up after the replaced line.
+    assertTrue(_conn.deletions.isEmpty());
+    assertEquals("ab cd".length(), _conn.selStart());
+    assertEquals("ab cd".length(), _conn.selEnd());
   }
 
   @Test
