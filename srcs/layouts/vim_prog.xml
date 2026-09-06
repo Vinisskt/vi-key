@@ -30,14 +30,14 @@
   </row>
   <row>
     <key c="q" sw="&lt;"/>
-    <key c="w" sw="("/>
+    <key c="w" sw="&gt;"/>
     <key c="e" sw="["/>
     <key c="r" sw="{"/>
     <key c="t" sw="/"/>
     <key c="y" sw="&amp;"/>
     <key c="u" sw="*"/>
     <key c="i" sw="-"/>
-    <key c="o" sw="="/>
+    <key c="o" sw="=" ne="+"/>
     <key c="p" sw=":"/>
   </row>
   <row>
@@ -46,10 +46,10 @@
     <key c="d" sw=";"/>
     <key c="f" sw="\?"/>
     <key c="g" sw="_"/>
-    <key c="h" sw="+"/>
-    <key c="j" sw="{"/>
-    <key c="k" sw="["/>
-    <key c="l" sw="\\"/>
+    <key c="h"/>
+    <key c="j"/>
+    <key c="k"/>
+    <key c="l"/>
   </row>
   <row>
     <key width="1.5" role="action" c="shift"/>
@@ -59,7 +59,7 @@
     <key c="v" sw=","/>
     <key c="b" sw="/"/>
     <key c="n" sw="|"/>
-    <key c="m" sw="!"/>
+    <key c="m" sw="\\"/>
     <key width="1.5" role="action" c="backspace" ne="delete"/>
   </row>
   <row height="0.95">

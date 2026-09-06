@@ -51,7 +51,7 @@ public final class KeyEventHandler
   Map<Character, Character> _quick_symbols = new TreeMap<Character, Character>();
   KeyValue _last_quick_key = null;
   long _last_quick_time = 0;
-  static final long QUICK_TAP_DELAY_MS = 250;
+  static final long QUICK_TAP_DELAY_MS = 200;
 
   public KeyEventHandler(IReceiver recv, Suggestions sg)
   {
