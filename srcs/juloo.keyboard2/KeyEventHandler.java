@@ -718,7 +718,7 @@ public final class KeyEventHandler
     switch (name)
     {
       case "help": case "h":
-        _vim.flash_status("copy paste undo redo goto N upper lower title reload addlua rmlua float", VimEngine.STATUS_COLOR_CMD);
+        _vim.flash_status("copy paste undo redo goto N upper lower title reload addlua rmlua browser", VimEngine.STATUS_COLOR_CMD);
         return;
       case "copy": case "y": case "yank":
         vim_copy_selection_or_line();
@@ -924,7 +924,7 @@ public final class KeyEventHandler
       {"ls", "lista os comandos Lua"},
       {"addlua &lt;nome&gt;", "salva o clipboard como script Lua"},
       {"rmlua &lt;nome&gt;", "remove um script Lua"},
-      {"float &lt;url&gt; / browser / br", "abre o navegador (esc fecha)"},
+      {"browser &lt;url&gt; / br / float", "abre o navegador (esc fecha)"},
       {"help (h)", "mostra esta ajuda"},
     };
     for (String[] c : cmds)

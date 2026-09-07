@@ -279,4 +279,8 @@
          preference screens. -->
     <item name="android:fitsSystemWindows">true</item>
   </style>
+  <style name="browserTheme" parent="appTheme">
+    <item name="android:windowNoTitle">true</item>
+    <item name="android:windowActionBar">false</item>
+  </style>
 </resources>

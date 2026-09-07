@@ -15,7 +15,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 /** Full-screen web browser shown above the keyboard (the IME window stays
-    visible below). Opened with ":float <url>", closed with [esc] or the close
+    visible below). Opened with ":browser <url>", closed with [esc] or the close
     button. The window is a normal activity, so text input goes to it through
     the standard Android IME flow instead of to the app below. */
 public final class BrowserActivity extends Activity
