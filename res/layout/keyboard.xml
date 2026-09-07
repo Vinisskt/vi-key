@@ -8,6 +8,6 @@
     <TextView android:id="@+id/candidates_lang_name" style="@style/candidates_lang_name"/>
     <Button android:id="@+id/dictionary_switch" style="@style/change_dictionary"/>
   </juloo.keyboard2.suggestions.CandidatesView>
-  <TextView android:id="@+id/vim_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp" android:textStyle="bold" android:typeface="monospace" android:gravity="center_vertical" android:paddingStart="16dp" android:paddingEnd="16dp" android:letterSpacing="0.08" android:background="?attr/colorKeyAction" android:textColor="#1d2021" android:text="" android:visibility="gone" android:minHeight="22dp"/>
+  <TextView android:id="@+id/vim_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp" android:textStyle="bold" android:fontFamily="@font/cascadia_mono" android:gravity="center_vertical" android:paddingStart="16dp" android:paddingEnd="16dp" android:letterSpacing="0.08" android:background="?attr/colorKeyAction" android:textColor="#1d2021" android:text="" android:visibility="gone" android:minHeight="22dp"/>
   <juloo.keyboard2.Keyboard2View android:id="@+id/keyboard_view" android:layout_width="match_parent" android:layout_height="wrap_content"/>
 </LinearLayout>
