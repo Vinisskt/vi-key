@@ -168,6 +168,17 @@ public class KeyValueTest
   }
 
   @Test
+  public void nullPayloadThrows()
+  {
+    try
+    {
+      new KeyValue(null, KeyValue.Kind.Char, 'a', 0);
+      fail("expected NullPointerException");
+    }
+    catch (NullPointerException e) {}
+  }
+
+  @Test
   public void constructors()
   {
     KeyValue internal = KeyValue.makeInternalModifier(KeyValue.Modifier.CTRL);

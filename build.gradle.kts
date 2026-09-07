@@ -13,6 +13,7 @@ dependencies {
   // Pure-java Lua interpreter used for the ':command' scripts.
   implementation("org.luaj:luaj-jse:3.0.1")
   testImplementation("junit:junit:4.13.2")
+  testImplementation("org.mockito:mockito-core:5.16.1")
 }
 
 android {

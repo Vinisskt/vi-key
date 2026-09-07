@@ -354,6 +354,218 @@ public class KeyModifierTest
     assertTrue(q.hasFlagsAny(KeyValue.FLAG_GREYED));
   }
 
+  /** All ASCII letters and digits map to a key event under Ctrl/Alt/Meta. */
+  @Test
+  public void ctrlMapsWholeAlphabet()
+  {
+    for (char c : "abcdefghijklmnopqrstuvwxyz0123456789`-=[]\\;'/@+,.*#() ".toCharArray())
+    {
+      KeyValue k = KeyModifier.modify(KeyValue.makeCharKey(c), KeyValue.Modifier.CTRL);
+      assertEquals(KeyValue.Kind.Keyevent, k.getKind());
+    }
+    // Editing keys other than the space bar are left alone.
+    assertEquals(key("backspace"), KeyModifier.modify(key("backspace"), KeyValue.Modifier.CTRL));
+  }
+
+  /** A user modmap overrides the default behaviors. */
+  @Test
+  public void modmapOverridesDefaults()
+  {
+    Modmap mm = new Modmap();
+    mm.add(Modmap.M.Ctrl, KeyValue.makeCharKey('x'), KeyValue.makeCharKey('y'));
+    mm.add(Modmap.M.Shift, KeyValue.makeCharKey('a'), KeyValue.makeCharKey('q'));
+    mm.add(Modmap.M.Fn, KeyValue.makeCharKey('a'), KeyValue.makeCharKey('%'));
+    KeyModifier.set_modmap(mm);
+    // Ctrl turns the *mapped* key into a key event.
+    assertEquals(KeyEvent.KEYCODE_Y,
+        KeyModifier.modify(KeyValue.makeCharKey('x'), KeyValue.Modifier.CTRL).getKeyevent());
+    // Shift and Fn return the mapped key as is.
+    assertChar('q', KeyModifier.modify(KeyValue.makeCharKey('a'), KeyValue.Modifier.SHIFT));
+    assertChar('%', KeyModifier.modify(KeyValue.makeCharKey('a'), KeyValue.Modifier.FN));
+    // A gesture tries the shift mapping first, but the Fn modmap wins over it.
+    assertChar('%', KeyModifier.modify(KeyValue.makeCharKey('a'), KeyValue.Modifier.GESTURE));
+    KeyModifier.set_modmap(null);
+  }
+
+  /** The Fn modifier turns placeholders into their corresponding keys. */
+  @Test
+  public void fnTurnsPlaceholdersIntoTheirKeys()
+  {
+    assertKeyevent(KeyEvent.KEYCODE_F11,
+        KeyModifier.modify(key("f11_placeholder"), KeyValue.Modifier.FN));
+    assertKeyevent(KeyEvent.KEYCODE_F12,
+        KeyModifier.modify(key("f12_placeholder"), KeyValue.Modifier.FN));
+    assertChar('\u05C1', KeyModifier.modify(key("shindot_placeholder"), KeyValue.Modifier.FN));
+    assertChar('\u05C2', KeyModifier.modify(key("sindot_placeholder"), KeyValue.Modifier.FN));
+    assertChar('\u05AB', KeyModifier.modify(key("ole_placeholder"), KeyValue.Modifier.FN));
+    assertChar('\u05BD', KeyModifier.modify(key("meteg_placeholder"), KeyValue.Modifier.FN));
+    // A placeholder without an Fn counterpart is left alone.
+    assertEquals(key("removed"), KeyModifier.modify(key("removed"), KeyValue.Modifier.FN));
+  }
+
+  /** The arrow-right accent combines a combining char with a char key. */
+  @Test
+  public void arrowRightCombinesCombiningChar()
+  {
+    KeyValue combined = KeyModifier.modify(key("a"), KeyValue.Modifier.ARROW_RIGHT);
+    assertEquals(KeyValue.Kind.String, combined.getKind());
+    assertEquals("a\u20D7", combined.getString());
+    // Non-char keys are not modified.
+    assertEquals(key("enter"), KeyModifier.modify(key("enter"), KeyValue.Modifier.ARROW_RIGHT));
+    assertEquals(str("ab"), KeyModifier.modify(str("ab"), KeyValue.Modifier.ARROW_RIGHT));
+  }
+
+  @Test
+  public void uncomposableComposeStatesKeepTheKey()
+  {
+    KeyValue hindi_a = KeyValue.makeCharKey('\u0905');
+    assertEquals(hindi_a, KeyModifier.modify(hindi_a, KeyValue.Modifier.SUPERSCRIPT));
+    assertEquals(hindi_a, KeyModifier.modify(hindi_a, KeyValue.Modifier.SUBSCRIPT));
+    assertEquals(hindi_a, KeyModifier.modify(hindi_a, KeyValue.Modifier.ARROWS));
+    // Dead-char on non-char, non-editing keys is a no-op.
+    assertEquals(key("enter"), KeyModifier.modify(key("enter"), KeyValue.Modifier.BREVE));
+  }
+
+  /** A different hangul initial is greyed, other kinds are preserved. */
+  @Test
+  public void hangulInitialOtherKinds()
+  {
+    KeyValue initial = KeyValue.makeHangulInitial("y", 1);
+    KeyValue greyed = KeyModifier.modify(initial, key("\u3131"));
+    assertTrue(greyed.hasFlagsAny(KeyValue.FLAG_GREYED));
+    // String keys are left untouched.
+    assertEquals(str("xy"), KeyModifier.modify(str("xy"), key("\u3131")));
+  }
+
+  /** Each hangul vowel maps to the expected precomposed medial. */
+  @Test
+  public void hangulMedialVowels()
+  {
+    char[] vowels = "\u314F\u3150\u3151\u3152\u3153\u3154\u3155\u3156\u3157\u3158\u3159\u315A\u315B\u315C\u315D\u315E\u315F\u3160\u3161\u3162\u3163".toCharArray();
+    for (int i = 0; i < vowels.length; i++)
+    {
+      KeyValue m = KeyModifier.modify(KeyValue.makeCharKey(vowels[i]), key("\u3131"));
+      assertEquals(KeyValue.Kind.Hangul_medial, m.getKind());
+      assertEquals(0xAC00 + i * 28, m.getHangulPrecomposed());
+    }
+  }
+
+  /** Each hangul final combining with a medial produces the expected syllable. */
+  @Test
+  public void hangulMedialFinals()
+  {
+    char[] finals = "ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ".toCharArray();
+    KeyValue medial = KeyValue.makeHangulMedial(0xAC00, 0);
+    for (int i = 0; i < finals.length; i++)
+    {
+      KeyValue k = KeyModifier.modify(KeyValue.makeCharKey(finals[i]), medial);
+      assertEquals(KeyValue.Kind.Char, k.getKind());
+      assertEquals(0xAC00 + (i + 1), k.getChar());
+    }
+    // Finals that are also initials, and the space bar, combine too.
+    KeyValue viaInitial = KeyModifier.modify(KeyValue.makeHangulInitial("\u3134", 1), medial);
+    assertEquals(0xAC00 + 4, viaInitial.getChar());
+    assertEquals(0xAC00, KeyModifier.modify(key("space"), medial).getChar());
+    // Non-final characters are greyed.
+    KeyValue greyed = KeyModifier.modify(key("q"), medial);
+    assertTrue(greyed.hasFlagsAny(KeyValue.FLAG_GREYED));
+    // Kinds that do not combine are preserved.
+    assertEquals(key("enter"), KeyModifier.modify(key("enter"), medial));
+  }
+
+  /** The gesture maps the Keyevent delete to delete_word. */
+  @Test
+  public void gestureOnKeyeventDelete()
+  {
+    KeyValue del = KeyValue.keyeventKey("del", KeyEvent.KEYCODE_DEL, 0);
+    KeyValue del_word = KeyModifier.modify(del, KeyValue.Modifier.GESTURE);
+    assertEquals(KeyValue.Editing.DELETE_WORD, del_word.getEditing());
+  }
+
+  /** Every compose accent state resolves to its composed form or the input. */
+  @Test
+  public void allComposeAccentStates()
+  {
+    KeyValue in = key("a");
+    KeyValue.Modifier[] mods = {
+      KeyValue.Modifier.DOT_ABOVE, KeyValue.Modifier.ORDINAL,
+      KeyValue.Modifier.BOX, KeyValue.Modifier.SLASH,
+      KeyValue.Modifier.BAR, KeyValue.Modifier.DOT_BELOW,
+      KeyValue.Modifier.HORN, KeyValue.Modifier.HOOK_ABOVE,
+      KeyValue.Modifier.DOUBLE_GRAVE, KeyValue.Modifier.SMALL_CAPS,
+    };
+    for (KeyValue.Modifier m : mods)
+    {
+      KeyValue expected = expected_compose(m, in);
+      assertEquals("modifier " + m, expected, KeyModifier.modify(in, m));
+    }
+  }
+
+  static KeyValue expected_compose(KeyValue.Modifier m, KeyValue in)
+  {
+    return expected_compose_state(compose_state(m), in);
+  }
+  static KeyValue expected_compose_state(int state, KeyValue in)
+  {
+    KeyValue r = ComposeKey.apply(state, in);
+    return (r != null) ? r : in;
+  }
+  static int compose_state(KeyValue.Modifier m)
+  {
+    switch (m)
+    {
+      case DOT_ABOVE: return ComposeKeyData.accent_dot_above;
+      case ORDINAL: return ComposeKeyData.accent_ordinal;
+      case BOX: return ComposeKeyData.accent_box;
+      case SLASH: return ComposeKeyData.accent_slash;
+      case BAR: return ComposeKeyData.accent_bar;
+      case DOT_BELOW: return ComposeKeyData.accent_dot_below;
+      case HORN: return ComposeKeyData.accent_horn;
+      case HOOK_ABOVE: return ComposeKeyData.accent_hook_above;
+      case DOUBLE_GRAVE: return ComposeKeyData.accent_double_grave;
+      case SMALL_CAPS: return ComposeKeyData.accent_small_caps;
+      default: throw new AssertionError();
+    }
+  }
+
+  /** Shift falls back on the compose table before capitalizing. */
+  @Test
+  public void shiftComposesNonCapitalizableChars()
+  {
+    KeyValue sharp_s = KeyValue.makeCharKey('\u00DF');
+    KeyValue expected = expected_compose_state(ComposeKeyData.shift, sharp_s);
+    assertEquals(expected, KeyModifier.modify(sharp_s, KeyValue.Modifier.SHIFT));
+  }
+
+  /** The Fn modifier removes page-up/down keys and ignores other events. */
+  @Test
+  public void fnRemovesPageMovers()
+  {
+    KeyValue removed = KeyModifier.modify(key("page_up"), KeyValue.Modifier.FN);
+    assertEquals(KeyValue.Kind.Placeholder, removed.getKind());
+    assertEquals(KeyValue.Placeholder.REMOVED, removed.getPlaceholder());
+    assertEquals(KeyValue.Placeholder.REMOVED,
+        KeyModifier.modify(key("page_down"), KeyValue.Modifier.FN).getPlaceholder());
+    // An event that has no Fn counterpart is kept.
+    assertEquals(key("switch_greekmath"),
+        KeyModifier.modify(key("switch_greekmath"), KeyValue.Modifier.FN));
+  }
+
+  /** Dead-char accent on the space bar key is a no-op. */
+  @Test
+  public void deadCharOnSpaceBarKey()
+  {
+    assertEquals(key("space"), KeyModifier.modify(key("space"), KeyValue.Modifier.BREVE));
+  }
+
+  /** Selection mode maps the right cursor to the right selection cursor. */
+  @Test
+  public void selectionModeRightCursor()
+  {
+    KeyValue cursor = KeyModifier.modify(key("cursor_right"), KeyValue.Modifier.SELECTION_MODE);
+    assertEquals(KeyValue.Slider.Selection_cursor_right, cursor.getSlider());
+  }
+
   static void assertChar(char c, KeyValue k)
   {
     assertEquals(KeyValue.Kind.Char, k.getKind());
