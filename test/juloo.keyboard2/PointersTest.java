@@ -126,6 +126,7 @@ public class PointersTest
     final List<String> ups = new ArrayList<String>();
     final List<String> holds = new ArrayList<String>();
     final List<Boolean> flagsChanged = new ArrayList<Boolean>();
+    final List<String> quickSymbols = new ArrayList<String>();
     KeyValue nullValue = null;
 
     @Override public KeyValue modifyKey(KeyValue k, Pointers.Modifiers mods)
@@ -138,6 +139,8 @@ public class PointersTest
     { flagsChanged.add(shouldVibrate); }
     @Override public void onPointerHold(KeyValue k, Pointers.Modifiers mods)
     { holds.add(k.toString()); }
+    @Override public void onQuickTapSymbol(char symbol)
+    { quickSymbols.add(String.valueOf(symbol)); }
     char _quickSymbol = 0;
     @Override public char getQuickTapSymbol(char c)
     { return _quickSymbol; }
@@ -516,9 +519,8 @@ public class PointersTest
     Message m = new Message();
     m.what = timeoutWhatOf(0);
     assertTrue(_ptrs.handleMessage(m));
-    // The special char is typed once via onPointerDown and never repeats.
-    assertEquals(KeyValue.makeCharKey('!').toString() + "/swipe",
-        _events.downs.get(_events.downs.size() - 1));
+    // The special char is typed once via onQuickTapSymbol and never repeats.
+    assertEquals("!", _events.quickSymbols.get(_events.quickSymbols.size() - 1));
     assertTrue(_events.holds.isEmpty());
   }
 

@@ -442,14 +442,15 @@ public class VimEngineTest extends VimTestBase
   }
 
   @Test
-  public void colon_help_flashes_commands()
+  public void colon_help_opens_the_basics_page()
   {
     buffer("abc", 0);
     press_escape();
     press(":");
     press("h");
     press("enter");
-    assertTrue(_receiver.lastStatus().contains("copy paste undo"));
+    assertEquals(1, _receiver.pages.size());
+    assertTrue(_receiver.pages.get(0).contains("vi_key"));
   }
 
   @Test

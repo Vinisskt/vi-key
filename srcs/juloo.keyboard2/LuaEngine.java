@@ -51,6 +51,8 @@ import org.luaj.vm2.lib.jse.JsePlatform;
       - [vim.send(text)]: insert text at the cursor
       - [vim.copy(text)] / [vim.paste()] / [vim.clipboard()]: system clipboard
       - [vim.status(text)]: show a transient message in the keyboard status bar
+      - [vim.page(text)]: open (or update) a browser page showing [text] as
+        plain text, styled like the help page
     Positions are relative to the beginning of the text returned by
     [vim.get_text()]. */
 final class LuaEngine
@@ -399,6 +401,12 @@ final class LuaEngine
     vim.set("status", new OneArgFunction() {
       @Override public LuaValue call(LuaValue s) {
         flash(s.tojstring());
+        return LuaValue.NONE;
+      }
+    });
+    vim.set("page", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue s) {
+        _handler.open_page("out", s.tojstring());
         return LuaValue.NONE;
       }
     });

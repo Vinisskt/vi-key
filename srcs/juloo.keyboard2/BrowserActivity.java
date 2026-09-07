@@ -63,6 +63,26 @@ public final class BrowserActivity extends Activity
     ctx.startActivity(i);
   }
 
+  /** Open a browser page showing the given HTML content, or rewrite the
+      content of the page if it is already open. */
+  public static void open_page(Context ctx, String title, String html)
+  {
+    BrowserActivity a = _instance;
+    if (a != null)
+    {
+      a.runOnUiThread(new Runnable() {
+        @Override public void run() { a.show_page(title, html); }
+      });
+      return;
+    }
+    Intent i = new Intent(ctx, BrowserActivity.class);
+    i.putExtra("mode", "page");
+    i.putExtra("title", title);
+    i.putExtra("data", html);
+    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    ctx.startActivity(i);
+  }
+
   static String normalize_url(String url)
   {
     if (url == null || url.isEmpty())
@@ -89,6 +109,11 @@ public final class BrowserActivity extends Activity
       _webview.loadDataWithBaseURL(null, KeyEventHandler.vim_help_html(),
           "text/html", "utf-8", null);
     }
+    else if ("page".equals(getIntent().getStringExtra("mode")))
+    {
+      show_page(String.valueOf(getIntent().getStringExtra("title")),
+          String.valueOf(getIntent().getStringExtra("data")));
+    }
     else
     {
       load(getIntent().getStringExtra("url"));
@@ -108,6 +133,14 @@ public final class BrowserActivity extends Activity
   void load(String url)
   {
     _webview.loadUrl(normalize_url(url));
+  }
+
+  /** Rewrite the content of this page with the given HTML (used to update the
+      page at every [open_page] call). */
+  void show_page(String title, String html)
+  {
+    _url_input.setText(title);
+    _webview.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
   }
 
   @SuppressLint("SetJavaScriptEnabled")

@@ -451,13 +451,13 @@ public final class Pointers implements Handler.Callback
     if (ptr.hasFlagsAny(FLAG_P_LATCHED) || ptr.value == null)
       return;
     // Quick-tap symbol: type the special character once and stop (no repeat).
+    // Do NOT change ptr.value, so the original key still gets its key_up.
     if (ptr.value.getKind() == KeyValue.Kind.Char)
     {
       char symbol = _handler.getQuickTapSymbol(ptr.value.getChar());
       if (symbol != 0)
       {
-        ptr.value = KeyValue.makeCharKey(symbol);
-        _handler.onPointerDown(ptr.value, true);
+        _handler.onQuickTapSymbol(symbol);
         return;
       }
     }
@@ -836,6 +836,11 @@ public final class Pointers implements Handler.Callback
         repeating. [c] is the main character of the key. Returns [0] when the
         key has no quick-tap symbol. */
     public char getQuickTapSymbol(char c);
+
+    /** A quick-tap symbol was triggered. Send the character directly without
+        affecting the current pointer's key value (so the original key still
+        receives its key_up event). Default implementation does nothing. */
+    default public void onQuickTapSymbol(char symbol) {}
 
     /** Key is released. [k] is the key that was returned by
         [modifySelectedKey] or [modifySelectedKey]. */

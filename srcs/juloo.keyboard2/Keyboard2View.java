@@ -211,6 +211,13 @@ public class Keyboard2View extends View
     return _config.handler.getQuickTapSymbol(c);
   }
 
+  public void onQuickTapSymbol(char symbol)
+  {
+    KeyValue kv = KeyValue.makeCharKey(symbol);
+    _config.handler.key_down(kv, false);
+    _config.handler.key_up(kv, _pointers.getModifiers());
+  }
+
   public void onPointerFlagsChanged(boolean shouldVibrate)
   {
     updateFlags();

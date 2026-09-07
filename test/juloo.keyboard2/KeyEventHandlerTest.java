@@ -399,4 +399,82 @@ public class KeyEventHandlerTest extends VimTestBase
     assertTrue(lastStatusText().startsWith("2 copied"));
     assertEquals("aa\nbb\ncc", _conn.text());
   }
+
+  @Test
+  public void open_page_escapes_text_into_a_pre_page()
+  {
+    press_escape();
+    _handler.open_page("out", "cpu <amd> & \"ram\"");
+    assertEquals(1, _receiver.pages.size());
+    String shown = _receiver.pages.get(0);
+    assertTrue(shown.startsWith("out\u0000"));
+    assertTrue(shown.contains("<h1>out</h1>"));
+    assertTrue(shown.contains("<pre>cpu &lt;amd&gt; &amp; &quot;ram&quot;</pre>"));
+  }
+
+  @Test
+  public void vim_page_html_is_a_full_document()
+  {
+    String html = KeyEventHandler.vim_page_html("out", "x<y");
+    assertTrue(html.startsWith("<!DOCTYPE html>"));
+    assertTrue(html.endsWith("</body></html>"));
+    assertTrue(html.contains("x&lt;y"));
+  }
+
+  @Test
+  public void execute_vim_command_help_lua_opens_lua_page()
+  {
+    _handler.execute_vim_command("help lua");
+    assertEquals(1, _receiver.pages.size());
+    String shown = _receiver.pages.get(0);
+    assertTrue(shown.startsWith("lua\u0000"));
+    assertTrue(shown.contains("vim.page"));
+    assertTrue(shown.contains("API"));
+  }
+
+  @Test
+  public void execute_vim_command_help_default_opens_basics()
+  {
+    _handler.execute_vim_command("help");
+    assertEquals(1, _receiver.pages.size());
+    assertTrue(_receiver.pages.get(0).contains("vi_key"));
+  }
+
+  @Test
+  public void execute_vim_command_help_unknown_flashes_hint()
+  {
+    _handler.execute_vim_command("help nope");
+    assertTrue(_receiver.pages.isEmpty());
+    assertTrue(lastStatusText().contains("desconhecida"));
+    assertTrue(lastStatusText().contains("nope"));
+  }
+
+  @Test
+  public void ls_help_opens_the_help_index()
+  {
+    _handler.execute_vim_command("ls help");
+    assertEquals(1, _receiver.pages.size());
+    String shown = _receiver.pages.get(0);
+    assertTrue(shown.contains("ajuda"));
+    assertTrue(shown.contains("lua"));
+    assertTrue(shown.contains("termux"));
+    assertTrue(shown.contains("comandos"));
+  }
+
+  @Test
+  public void vim_help_page_html_unknown_returns_null()
+  {
+    assertNull(KeyEventHandler.vim_help_page_html("nope"));
+    assertNull(KeyEventHandler.vim_help_page_html(null));
+  }
+
+  @Test
+  public void vim_help_page_html_aliases_and_known_pages()
+  {
+    assertTrue(KeyEventHandler.vim_help_page_html("ajuda").contains("vi_key"));
+    assertTrue(KeyEventHandler.vim_help_page_html("help").contains("vi_key"));
+    assertTrue(KeyEventHandler.vim_help_page_html("LUA").contains("vim.page"));
+    assertTrue(KeyEventHandler.vim_help_page_html("termux").contains("ipc-loop"));
+    assertTrue(KeyEventHandler.vim_help_page_html("comandos").contains("reload"));
+  }
 }

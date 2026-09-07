@@ -250,6 +250,7 @@ public class SearchBarTest
     @Override public void toggle_float_panel(String url) {}
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
+    @Override public void open_page(String title, String html) {}
     @Override public void set_suggestions(juloo.keyboard2.suggestions.Suggestions s) {}
   }
 
@@ -278,6 +279,7 @@ public class SearchBarTest
     @Override public void toggle_float_panel(String url) {}
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
+    @Override public void open_page(String title, String html) {}
     @Override public void set_suggestions(juloo.keyboard2.suggestions.Suggestions s) {}
   }
 }

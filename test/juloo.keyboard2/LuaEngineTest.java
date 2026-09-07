@@ -249,6 +249,7 @@ public class LuaEngineTest extends VimTestBase
     @Override public void toggle_float_panel(String url) {}
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
+    @Override public void open_page(String title, String html) {}
     @Override public void set_suggestions(juloo.keyboard2.suggestions.Suggestions s) {}
     String lastStatus() { return statuses.isEmpty() ? null : statuses.get(statuses.size() - 1); }
   }
@@ -405,6 +406,32 @@ public class LuaEngineTest extends VimTestBase
     new File(dir, "adir.lua").mkdir();
     lua.save_script("adir", "vim.register('x', function() end)");
     assertTrue(_receiver.lastStatus().contains("lua:"));
+  }
+
+  @Test
+  public void page_shows_text_escaped_in_a_browser_page()
+  {
+    new_engine();
+    write_script("a.lua",
+        "vim.register('show', function() vim.page('cpu <amd> & \"ram\"') end)");
+    lua.reload();
+    lua.execute("show", "");
+    assertEquals(1, _receiver.pages.size());
+    String shown = _receiver.pages.get(0);
+    assertTrue(shown.startsWith("out\u0000"));
+    assertTrue(shown.contains("cpu &lt;amd&gt; &amp; &quot;ram&quot;"));
+    assertTrue(shown.contains("<pre>"));
+  }
+
+  @Test
+  public void page_shows_plain_text_when_content_is_simple()
+  {
+    new_engine();
+    write_script("a.lua", "vim.register('cat', function() vim.page('hello out') end)");
+    lua.reload();
+    lua.execute("cat", "");
+    assertEquals(1, _receiver.pages.size());
+    assertTrue(_receiver.pages.get(0).contains("hello out"));
   }
 
   @Test

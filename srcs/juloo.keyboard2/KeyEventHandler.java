@@ -336,7 +336,7 @@ public final class KeyEventHandler
     }
   }
 
-  void send_text(String text)
+  public void send_text(String text)
   {
     InputConnection conn = _recv.getCurrentInputConnection();
     if (conn == null)
@@ -685,7 +685,7 @@ public final class KeyEventHandler
     switch (name)
     {
       case "help": case "h":
-        _vim.flash_status("copy paste undo redo goto N upper lower title reload addlua rmlua browser", VimEngine.STATUS_COLOR_CMD);
+        open_help_page(arg);
         return;
       case "copy": case "y": case "yank":
         vim_copy_selection_or_line();
@@ -712,6 +712,11 @@ public final class KeyEventHandler
         _vim.flash_status(_lua.count_commands() + " lua commands (" + _lua.current_dir() + ")", VimEngine.STATUS_COLOR_CMD);
         return;
       case "ls":
+        if ("help".equals(arg))
+        {
+          _recv.open_page("ajuda", vim_help_index_html());
+          return;
+        }
         _vim.flash_status((_lua == null) ? "" : join_names(_lua.command_names()), VimEngine.STATUS_COLOR_CMD);
         return;
       case "addlua":
@@ -845,16 +850,13 @@ public final class KeyEventHandler
     _vim.flash_status("ajuda", VimEngine.STATUS_COLOR_CMD);
   }
 
-  /** Build the HTML help page listing the VIM shortcuts and the ':' commands. */
+  /** Build the basic help page (opened with '?' and [help]): the VIM
+      shortcuts and the main ':' commands. Detailed pages are reachable with
+      [:help <name>] and listed with [:ls help]. */
   static String vim_help_html()
   {
     StringBuilder b = new StringBuilder();
-    b.append("<!DOCTYPE html><html><head><meta charset=\"utf-8\">");
-    b.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-    b.append("<style>body{background:#1d2021;color:#ebdbb2;font-family:monospace;margin:16px;font-size:15px;line-height:1.6}");
-    b.append("h1{color:#fe8019;font-size:20px;margin:4px 0}h2{color:#83a598;font-size:16px;margin:20px 0 8px}");
-    b.append("kbd{background:#3c3836;color:#fb4934;padding:1px 6px;border-radius:3px;font-weight:bold}");
-    b.append(".dim{color:#a89984}hr{border:0;border-top:1px solid #3c3836}</style></head><body>");
+    b.append(vim_page_head());
     b.append("<h1>vi_key &mdash; ajuda</h1>");
     b.append("<p class=\"dim\">Digite qualquer coisa na barra acima para navegar. " +
         "<kbd>esc</kbd> fecha esta janela.</p><hr>");
@@ -882,47 +884,320 @@ public final class KeyEventHandler
 
     b.append("<h2>Comandos <kbd>:</kbd></h2>");
     String[][] cmds = {
+      {"help (h) [p&aacute;gina]", "abre a ajuda (padr&atilde;o: esta p&aacute;gina)"},
       {"copy (y, yank)", "copia a sele&ccedil;&atilde;o (ou a linha inteira)"},
       {"paste (p)", "cola o clipboard"},
       {"undo (u) / redo", "desfazer / refazer"},
       {"goto N (line N)", "vai para a linha N"},
       {"upper / lower / title", "caixa da sele&ccedil;&atilde;o ou linha"},
-      {"reload", "recarrega os scripts Lua"},
-      {"ls", "lista os comandos Lua"},
-      {"addlua &lt;nome&gt;", "salva o clipboard como script Lua"},
-      {"rmlua &lt;nome&gt;", "remove um script Lua"},
-      {"browser &lt;url&gt; / br / float", "abre o navegador (esc fecha)"},
-      {"help (h)", "mostra esta ajuda"},
+      {"browser &lt;url&gt; / float / br", "abre o navegador (esc fecha)"},
+      {"ls help", "&iacute;ndice de todas as p&aacute;ginas de ajuda"},
     };
     for (String[] c : cmds)
       b.append("<p><kbd>:").append(c[0]).append("</kbd> &mdash; ").append(c[1]).append("</p>");
 
-    b.append("<h2>Scripts Lua</h2>");
-    b.append("<p>Coloque arquivos <kbd>.lua</kbd> em <kbd>/sdcard/keyboard-lua</kbd> " +
-        "(ou em <kbd>/sdcard/keyboard-lua/plugins</kbd>) e recarregue com <kbd>:reload</kbd>. " +
-        "Cada arquivo vira um comando <kbd>:&lt;nome&gt;</kbd>, em que <kbd>nome</kbd> " +
-        "&eacute; o nome do arquivo sem o <kbd>.lua</kbd>.</p>");
-    b.append("<p>No Android 11+, essa pasta usa a permiss&atilde;o &ldquo;acesso a todos os " +
-        "arquivos&rdquo;; sem ela os scripts ficam na pasta privada do aplicativo e o " +
-        "teclado avisa na barra de status.</p>");
-    b.append("<p>API dispon&iacute;vel para os scripts (<kbd>vim.*</kbd>): " +
-        "<kbd>register</kbd>, <kbd>get_text</kbd>, <kbd>get_sel</kbd>, <kbd>set_sel</kbd>, " +
-        "<kbd>replace</kbd>, <kbd>send</kbd>, <kbd>copy</kbd>, <kbd>paste</kbd>, " +
-        "<kbd>clipboard</kbd>, <kbd>status</kbd> &mdash; detalhes no c&oacute;digo-fonte " +
-        "do <kbd>LuaEngine</kbd>.</p>");
-
-    b.append("<h2>Conectar com o Termux</h2>");
-    b.append("<p>Os scripts s&atilde;o lidos da mesma pasta de armazenamento compartilhado " +
-        "usada para trocar arquivos com o Termux: no Termux ela aparece em " +
-        "<kbd>~/storage/keyboard-lua/</kbd>. Isso permite escrever um script no Termux " +
-        "(ex.: com <kbd>nano ~/storage/keyboard-lua/meu.lua</kbd>), rodar <kbd>:reload</kbd> " +
-        "no teclado e usar o comando <kbd>:meu</kbd> ali na hora.</p>");
-    b.append("<p>Essa conex&atilde;o &eacute; opcional: enquanto a permiss&atilde;o de acesso a " +
-        "todos os arquivos n&atilde;o for concedida, os scripts ficam na pasta privada e s&atilde;o " +
-        "invis&iacute;veis para o Termux. Voc&ecirc; decide se quer conectar os dois ou manter " +
-        "os scripts apenas no teclado.</p>");
-    b.append("</body></html>");
+    b.append("<h2>Mais ajuda</h2>");
+    b.append("<p><kbd>:ls help</kbd> &rarr; lista todas as p&aacute;ginas dispon&iacute;veis.</p>");
+    b.append("<p>P&aacute;ginas: <kbd>:help lua</kbd> (scripts e API), <kbd>:help termux</kbd> " +
+        "(conectar ao Termux), <kbd>:help comandos</kbd> (todos os comandos <kbd>:</kbd>).</p>");
+    b.append(vim_page_foot());
     return b.toString();
+  }
+
+  /** Build the index page listing every help page (opened with [:ls help]). */
+  static String vim_help_index_html()
+  {
+    StringBuilder b = new StringBuilder();
+    b.append(vim_page_head());
+    b.append("<h1>vi_key &mdash; &iacute;ndice da ajuda</h1>");
+    b.append("<p class=\"dim\"><kbd>:help &lt;nome&gt;</kbd> abre uma p&aacute;gina; " +
+        "<kbd>esc</kbd> fecha. Cada chamada sobrescreve esta janela.</p><hr>");
+    String[][] pages = {
+      {"ajuda", "o b&aacute;sico do teclado vim (mesmo que <kbd>?</kbd>)"},
+      {"lua", "scripts <kbd>.lua</kbd>, diret&oacute;rios e a API <kbd>vim.*</kbd>"},
+      {"termux", "conectar o teclado ao Termux e criar plugins"},
+      {"comandos", "todos os comandos <kbd>:</kbd> do teclado"},
+    };
+    for (String[] p : pages)
+      b.append("<p><kbd>:help ").append(p[0]).append("</kbd> &mdash; ").append(p[1]).append("</p>");
+    b.append(vim_page_foot());
+    return b.toString();
+  }
+
+  /** Build the help page about the Lua scripts and the [vim.*] API. */
+  static String vim_help_lua_html()
+  {
+    StringBuilder b = new StringBuilder();
+    b.append(vim_page_head());
+    b.append("<h1>:help lua &mdash; scripts</h1>");
+    b.append("<p class=\"dim\">Os scripts s&atilde;o executados dentro do teclado; " +
+        "n&atilde;o dependem do Termux (que &eacute; opcional).</p><hr>");
+
+    b.append("<h2>Onde ficam os scripts</h2>");
+    b.append("<p>Pasta <kbd>/sdcard/keyboard-lua</kbd> (+ subpasta <kbd>plugins</kbd>). " +
+        "<b>Essa pasta &eacute; do usu&aacute;rio</b> &mdash; em novas instala&ccedil;&otilde;es ela est&aacute; vazia. " +
+        "No Android 11+ isso usa a permiss&atilde;o &ldquo;acesso a todos os arquivos&rdquo;; sem ela " +
+        "os scripts ficam na pasta privada do aplicativo e o teclado avisa na barra de status.</p>");
+
+    b.append("<h2>Carregar e gerenciar</h2>");
+    b.append("<p><kbd>:reload</kbd> recarrega os scripts &middot; <kbd>:ls</kbd> lista os comandos " +
+        "(o <kbd>:ls help</kbd> mostra as p&aacute;ginas de ajuda).</p>");
+    b.append("<p><kbd>:addlua &lt;nome&gt;</kbd> salva o conteúdo do clipboard como um script; " +
+        "<kbd>:rmlua &lt;nome&gt;</kbd> remove um script.</p>");
+    b.append("<p>Cada arquivo <kbd>.lua</kbd> vira um comando <kbd>:&lt;nome&gt;</kbd> (nome sem " +
+        "a extens&atilde;o). Um <kbd>vim.register(&quot;nome&quot;, fun&ccedil;&atilde;o)</kbd> dentro do " +
+        "arquivo tem preced&ecirc;ncia sobre o nome do arquivo.</p>");
+
+    b.append("<h2>API <kbd>vim.*</kbd></h2>");
+    String[][] api = {
+      {"register(nome, fn)", "registra um comando <kbd>:nome</kbd>"},
+      {"get_text()", "todo o texto do editor"},
+      {"get_sel()", "in&iacute;cio e fim da sele&ccedil;&atilde;o"},
+      {"set_sel(in&iacute;cio, fim)", "move cursor/sele&ccedil;&atilde;o"},
+      {"replace(in&iacute;cio, fim, texto)", "substitui um trecho"},
+      {"send(texto)", "digita texto no cursor"},
+      {"copy(texto) / paste()", "clipboard: copiar / colar"},
+      {"clipboard()", "conte&uacute;do atual do clipboard"},
+      {"status(msg)", "mensagem r&aacute;pida na barra de status"},
+      {"page(texto)", "abre/sobrescreve uma p&aacute;gina estilo a de ajuda com o texto"},
+    };
+    for (String[] a : api)
+      b.append("<p><kbd>vim.").append(a[0]).append("</kbd> &mdash; ").append(a[1]).append("</p>");
+    b.append("<p class=\"dim\">Posi&ccedil;&otilde;es de <kbd>get_sel</kbd>/<kbd>set_sel</kbd>/" +
+        "<kbd>replace</kbd> s&atilde;o relativas ao in&iacute;cio do texto de <kbd>get_text</kbd>.</p>");
+
+    b.append("<h2>Exemplo</h2>");
+    b.append("<pre>vim.register(\"ola\", function()\n" +
+        "  vim.status(\"olá \" .. vim.clipboard())\n" +
+        "end)\n</pre>");
+    b.append("<p>Salve como <kbd>ola.lua</kbd>, rode <kbd>:reload</kbd> e use <kbd>:ola</kbd>. " +
+        "Veja tamb&eacute;m <kbd>:help termux</kbd> para plugins que rodam comandos externos.</p>");
+    b.append(vim_page_foot());
+    return b.toString();
+  }
+
+/** Build the help page about connecting the keyboard to the Termux. */
+  static String vim_help_termux_html()
+  {
+    StringBuilder b = new StringBuilder();
+    b.append(vim_page_head());
+    b.append("<h1>:help termux &mdash; conectar ao Termux</h1>");
+    b.append("<p class=\"dim\">A pasta <kbd>/sdcard/keyboard-lua</kbd> &eacute; do <b>usu&aacute;rio</b>, n&atilde;o do aplicativo. " +
+        "Em novas instala&ccedil;&otilde;es ela est&aacute; vazia. Voc&ecirc; cria os arquivos abaixo.</p><hr>");
+
+    b.append("<h2>O servi&ccedil;o <kbd>ipc-loop.sh</kbd></h2>");
+    b.append("<p>Rode no Termux (em background). Ele vigia <kbd>data/cmd</kbd>, executa como shell " +
+        "e grava a sa&iacute;da em <kbd>data/out</kbd>.</p>");
+    b.append("<pre>#!/data/data/com.termux/files/usr/bin/bash\n" +
+        "# ipc-loop.sh &mdash; ponte vi-key <-> Termux\n" +
+        "#   uso: bash ~/storage/shared/keyboard-lua/ipc-loop.sh\n" +
+        "DIR=\"$HOME/storage/shared/keyboard-lua\"\n" +
+        "DATA=\"$DIR/data\"\n" +
+        "mkdir -p \"$DIR\" \"$DATA\"\n" +
+        "termux-wake-lock\n" +
+        "while true; do\n" +
+        "  if [ -f \"$DATA/cmd\" ]; then\n" +
+        "    : > \"$DATA/out\"\n" +
+        "    bash \"$DATA/cmd\" > \"$DATA/out\" 2>&1\n" +
+        "    rm -f \"$DATA/cmd\"\n" +
+        "  fi\n" +
+        "  sleep 0.3\n" +
+        "done</pre>");
+    b.append("<p>No Termux: <kbd>mkdir -p ~/storage/shared/keyboard-lua/data</kbd>, " +
+        "salve o c&oacute;digo acima como <kbd>ipc-loop.sh</kbd>, torne execut&aacute;vel " +
+        "(<kbd>chmod +x ipc-loop.sh</kbd>) e rode <kbd>bash ipc-loop.sh &</kbd>.</p>");
+
+    b.append("<h2>Plugin <kbd>termux.lua</kbd> (envia comandos)</h2>");
+    b.append("<p>Salve como <kbd>/sdcard/keyboard-lua/plugins/termux.lua</kbd> (pode criar no Termux " +
+        "em <kbd>~/storage/shared/keyboard-lua/plugins/termux.lua</kbd>) e rode <kbd>:reload</kbd>. " +
+        "Uso: <kbd>:termux <comando></kbd>.</p>");
+    b.append("<pre>-- termux.lua &mdash; roda um comando no Termux e mostra a sa&iacute;da na statusbar\n" +
+        "--   uso: :termux <comando shell>\n" +
+        "local DIR = \"/sdcard/keyboard-lua/data\"\n" +
+        "local cmd = table.concat({...}, \" \")\n" +
+        "if cmd == \"\" then\n" +
+        "  vim.status(\"uso: :termux <comando>\")\n" +
+        "  return\n" +
+        "end\n" +
+        "os.execute(\"mkdir -p \" .. DIR)\n" +
+        "local tmp = DIR .. \"/cmd.tmp\"\n" +
+        "local f = io.open(tmp, \"w\")\n" +
+        "f:write(cmd .. \"\\n\")\n" +
+        "f:close()\n" +
+        "os.remove(DIR .. \"/cmd\")\n" +
+        "os.rename(tmp, DIR .. \"/cmd\")\n" +
+        "local done = false\n" +
+        "for i = 1, 50 do\n" +
+        "  local c = io.open(DIR .. \"/cmd\", \"r\")\n" +
+        "  if c then\n" +
+        "    c:close()\n" +
+        "    os.execute(\"sleep 0.2\")\n" +
+        "  else\n" +
+        "    done = true\n" +
+        "    break\n" +
+        "  end\n" +
+        "end\n" +
+        "if not done then\n" +
+        "  vim.status(\"termux n\u00e3o respondeu (checar servi\u00e7o keyboard-ipc)\")\n" +
+        "  return\n" +
+        "end\n" +
+        "local o = io.open(DIR .. \"/out\", \"r\")\n" +
+        "if not o then\n" +
+        "  vim.status(\"(sem sa\u00edda)\")\n" +
+        "  return\n" +
+        "end\n" +
+        "local s = o:read(\"*a\")\n" +
+        "o:close()\n" +
+        "if s == \"\" then s = \"(sem sa\u00edda)\" end\n" +
+        "vim.status(s:sub(1, 300))</pre>");
+
+    b.append("<h2>Plugin <kbd>termuxout.lua</kbd> (mostra &uacute;ltima sa&iacute;da)</h2>");
+    b.append("<p>Salve como <kbd>/sdcard/keyboard-lua/plugins/termuxout.lua</kbd>, <kbd>:reload</kbd>. " +
+        "Uso: <kbd>:termuxout</kbd>.</p>");
+    b.append("<pre>-- termuxout.lua &mdash; mostra a &uacute;ltima sa&iacute;da do Termux na statusbar\n" +
+        "--   uso: :termuxout\n" +
+        "local f = io.open(\"/sdcard/keyboard-lua/data/out\", \"r\")\n" +
+        "if not f then\n" +
+        "  vim.status(\"(sem sa\u00edda ainda)\")\n" +
+        "  return\n" +
+        "end\n" +
+        "local s = f:read(\"*a\")\n" +
+        "f:close()\n" +
+        "if s == \"\" then s = \"(vazio)\" end\n" +
+        "vim.status(s:sub(1, 200))</pre>");
+
+    b.append("<p class=\"dim\">Depois da integra&ccedil;&atilde;o, voc&ecirc; cria os seus pr&oacute;prios scripts " +
+        "Lua na pasta <kbd>plugins</kbd> e usa <kbd>:reload</kbd> para ativ&aacute;-los. " +
+        "Veja <kbd>:help lua</kbd> para a API <kbd>vim.*</kbd> completa.</p>");
+    b.append(vim_page_foot());
+    return b.toString();
+  }
+
+  /** Build the help page listing every built-in ':' command. */
+  static String vim_help_commands_html()
+  {
+    StringBuilder b = new StringBuilder();
+    b.append(vim_page_head());
+    b.append("<h1>:help comandos &mdash; comandos <kbd>:</kbd></h1>");
+    b.append("<p class=\"dim\">Sem argumentos o comando volta ao modo NORMAL.</p><hr>");
+    String[][] cmds = {
+      {"help (h) [p&aacute;gina]", "abre a ajuda; <kbd>:ls help</kbd> lista as p&aacute;ginas"},
+      {"ls [help]", "lista os comandos Lua; com <kbd>help</kbd>, &iacute;ndice das p&aacute;ginas"},
+      {"copy (y, yank)", "copia a sele&ccedil;&atilde;o (ou a linha inteira)"},
+      {"paste (p)", "cola o clipboard"},
+      {"undo (u) / redo", "desfazer / refazer"},
+      {"goto N (line N)", "vai para a linha N"},
+      {"upper / lower / title", "caixa da sele&ccedil;&atilde;o ou da linha"},
+      {"reload", "recarrega os scripts Lua"},
+      {"addlua &lt;nome&gt;", "salva o clipboard como um script Lua"},
+      {"rmlua &lt;nome&gt;", "remove um script Lua"},
+      {"browser (br / float) [url]", "abre o navegador; esc fecha"},
+    };
+    for (String[] c : cmds)
+      b.append("<p><kbd>:").append(c[0]).append("</kbd> &mdash; ").append(c[1]).append("</p>");
+    b.append("<p class=\"dim\">Al&eacute;m dos built-in, cada script Lua vira um comando <kbd>:&lt;nome&gt;</kbd> " +
+        "e plugins de exemplo como <kbd>termux</kbd>/<kbd>cat</kbd>/<kbd>termuxout</kbd> ficam " +
+        "dispon&iacute;veis (veja <kbd>:help termux</kbd>).</p>");
+    b.append(vim_page_foot());
+    return b.toString();
+  }
+
+  /** Names of the pages known by [vim_help_page_html]. */
+  static String[] vim_help_page_names()
+  {
+    return new String[] { "ajuda", "comandos", "lua", "termux" };
+  }
+
+  /** The full HTML of the help page [name], or [null] when unknown. */
+  static String vim_help_page_html(String name)
+  {
+    if (name == null)
+      return null;
+    name = name.toLowerCase(Locale.ROOT);
+    if (name.equals("ajuda") || name.equals("help"))
+      return vim_help_html();
+    if (name.equals("lua"))
+      return vim_help_lua_html();
+    if (name.equals("termux"))
+      return vim_help_termux_html();
+    if (name.equals("comandos"))
+      return vim_help_commands_html();
+    return null;
+  }
+
+  /** Open (or update) the help page [name]; an empty name opens the basics
+      page. Unknown names flash a hint instead of opening a page. */
+  void open_help_page(String name)
+  {
+    name = (name == null) ? "" : name.trim().toLowerCase(Locale.ROOT);
+    if (name.isEmpty())
+      name = "ajuda";
+    String html = vim_help_page_html(name);
+    if (html == null)
+    {
+      _vim.flash_status("p\u00e1gina de ajuda desconhecida: " + name + " (use :ls help)",
+          VimEngine.STATUS_COLOR_CMD);
+      return;
+    }
+    _recv.open_page(name, html);
+  }
+
+  /** The HTML head shared by the help page and the script content pages. */
+  static String vim_page_head()
+  {
+    StringBuilder b = new StringBuilder();
+    b.append("<!DOCTYPE html><html><head><meta charset=\"utf-8\">");
+    b.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+    b.append("<style>body{background:#1d2021;color:#ebdbb2;font-family:monospace;margin:16px;font-size:15px;line-height:1.6}");
+    b.append("h1{color:#fe8019;font-size:20px;margin:4px 0}h2{color:#83a598;font-size:16px;margin:20px 0 8px}");
+    b.append("kbd{background:#3c3836;color:#fb4934;padding:1px 6px;border-radius:3px;font-weight:bold}");
+    b.append(".dim{color:#a89984}hr{border:0;border-top:1px solid #3c3836}");
+    b.append("pre{background:#282828;border:1px solid #3c3836;padding:8px;border-radius:4px;overflow-x:auto}</style></head><body>");
+    return b.toString();
+  }
+
+  static String vim_page_foot()
+  {
+    return "</body></html>";
+  }
+
+  /** Escape [text] for safe embedding in HTML. */
+  static String vim_escape_html(String text)
+  {
+    StringBuilder b = new StringBuilder(text.length());
+    for (int i = 0; i < text.length(); i++)
+    {
+      switch (text.charAt(i))
+      {
+        case '&': b.append("&amp;"); break;
+        case '<': b.append("&lt;"); break;
+        case '>': b.append("&gt;"); break;
+        case '"': b.append("&quot;"); break;
+        default: b.append(text.charAt(i));
+      }
+    }
+    return b.toString();
+  }
+
+  /** An HTML page (styled like the help page) showing [text] as plain text in
+      a [pre] block. */
+  static String vim_page_html(String title, String text)
+  {
+    StringBuilder b = new StringBuilder();
+    b.append(vim_page_head());
+    b.append("<h1>").append(title).append("</h1>");
+    b.append("<p class=\"dim\">Esc fecha esta janela; outra chamada sobrescreve " +
+        "o conte&uacute;do.</p><hr>");
+    b.append("<pre>").append(vim_escape_html(text)).append("</pre>");
+    b.append(vim_page_foot());
+    return b.toString();
+  }
+
+  /** Open (or update) a browser page with [text] as plain text, styled like
+      the help page. Listed in the Lua API as [vim.page]. */
+  void open_page(String title, String text)
+  {
+    _recv.open_page(title, vim_page_html(title, text));
   }
 
   /** Move the cursor to the start of line [arg] (1-indexed). */
@@ -1061,6 +1336,9 @@ public final class KeyEventHandler
     public void close_float_panel();
     /** Open the built-in VIM/command help page. */
     public void open_help();
+    /** Open (or update) a browser page showing the given HTML content, in the
+        same window as the help page. Re-calling replaces the content. */
+    public void open_page(String title, String html);
   }
 
   class Autocapitalisation_callback implements Autocapitalisation.Callback

@@ -349,6 +349,8 @@ public final class Config
     /** The special character to type for a quick-tap key held down. [0] when
         none. */
     public char getQuickTapSymbol(char c);
+    /** Send text to the input connection. */
+    public void send_text(String text);
   }
 
   /** Config migrations. */
