@@ -25,6 +25,7 @@ android {
     targetSdk { version = release(36) }
     versionCode = 74
     versionName = "vi_key-18"
+    resConfigs("en", "pt")
   }
 
   sourceSets {
