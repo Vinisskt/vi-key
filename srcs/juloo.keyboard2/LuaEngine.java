@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.luaj.vm2.Globals;
@@ -32,13 +33,14 @@ import org.luaj.vm2.lib.jse.JsePlatform;
     [.lua] files dropped in the [keyboard-lua] directory of the user visible
     storage (or in the app private directory [files/lua] when that folder is
     not accessible) are loaded at startup (or when the [reload] command is
-    run). Every script can be run from the command line as [:<name>] where
-    [name] is the file name without the [.lua] extension; the command line
-    arguments are passed to the script as the Lua vararg [...]. Scripts can
-    also register named commands through [vim.register("name", function(args)
-    ...)]. Import of new scripts can also be done from the command line
-    through [addlua] (which saves the content of the system clipboard as a
-    script) and [rmlua].
+    run). Scripts can also be kept in the [keyboard-lua/plugins] subfolder,
+    which is scanned as well. Every script can be run from the command line
+    as [:<name>] where [name] is the file name without the [.lua] extension;
+    the command line arguments are passed to the script as the Lua vararg
+    [...]. Scripts can also register named commands through
+    [vim.register("name", function(args) ...)]. Import of new scripts can
+    also be done from the command line through [addlua] (which saves the
+    content of the system clipboard as a script) and [rmlua].
 
     API exposed to scripts in the global table [vim]:
       - [vim.register(name, fn)]: register a command reachable as [:<name>]
@@ -124,13 +126,24 @@ final class LuaEngine
       ensure_user_lua_dir();
     }
     _commands.clear();
-    File[] files = _lua_dir.listFiles();
+    List<File> files = new ArrayList<File>();
+    add_files(files, _lua_dir);
+    add_files(files, new File(_lua_dir, "plugins"));
+    Collections.sort(files);
+    for (File f : files)
+      load_script(f);
+  }
+
+  /** Append the [.lua] script files of [dir] (when it exists) to [out]. */
+  static void add_files(List<File> out, File dir)
+  {
+    File[] files = (dir == null) ? null : dir.listFiles();
     if (files == null)
       return;
     Arrays.sort(files);
     for (File f : files)
       if (f.isFile() && f.getName().endsWith(".lua"))
-        load_script(f);
+        out.add(f);
   }
 
   /** Path of the directory the scripts are loaded from. */

@@ -86,6 +86,28 @@ public class LuaEngineTest extends VimTestBase
   }
 
   @Test
+  public void scripts_in_plugins_subfolder_are_loaded()
+  {
+    new_engine();
+    File plugins = new File(dir, "plugins");
+    assertTrue(plugins.mkdir());
+    write_script("root.lua", "vim.status('root')");
+    File p = new File(plugins, "extra.lua");
+    try
+    {
+      java.io.FileOutputStream out = new java.io.FileOutputStream(p);
+      out.write("vim.status('plugin')\nvim.register('plug', function() end)".getBytes("UTF-8"));
+      out.close();
+    }
+    catch (Exception e)
+    {
+      throw new RuntimeException(e);
+    }
+    lua.reload();
+    assertArrayEquals(new String[] { "extra", "plug", "root" }, lua.command_names());
+  }
+
+  @Test
   public void get_text_exposed_to_scripts()
   {
     new_engine();
