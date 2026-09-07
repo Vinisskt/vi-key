@@ -13,7 +13,7 @@ import android.view.inputmethod.InputConnection;
     [x], undo with [u], redo with ctrl+r, [i] to switch back to insert mode,
     [o] to open a new line below and [O] to open one above, [/?] search forward
     and backward ([/] searches, [?] opens the built-in help),
-    and [jk] or the escape key to switch back to normal mode. Counts are
+    and [jk] or [ctrl]+escape to switch back to normal mode. Counts are
     supported for most commands.
     Unknown commands are silently ignored, mimicking a "beep". */
 public final class VimEngine
@@ -103,7 +103,11 @@ public final class VimEngine
         switch (kv.getKeyevent())
         {
           case KeyEvent.KEYCODE_ENTER: return on_enter();
-          case KeyEvent.KEYCODE_ESCAPE: return on_escape();
+          case KeyEvent.KEYCODE_ESCAPE:
+            if (_mode == MODE_INSERT
+                && (metaState & (KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON)) == 0)
+              return false; // Pass the escape key to the app (Termux, nvim...)
+            return on_escape();
           default: return false;
         }
       default:

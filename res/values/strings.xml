@@ -128,7 +128,7 @@
     <string name="launcher_mode_normal">NORMAL</string>
     <string name="launcher_mode_search">SEARCH</string>
     <string name="launcher_mode_cmd">CMD</string>
-    <string name="launcher_modes_hint">to exit insert: jk or esc · quick double-tap types the key\'s symbol</string>
+    <string name="launcher_modes_hint">to exit insert: jk or ctrl+esc · quick double-tap types the key\'s symbol</string>
     <string name="key_descr_capslock">Caps lock</string>
     <string name="key_descr_compose">Compose</string>
     <string name="key_descr_switch_greekmath">Greek &amp; math symbols</string>

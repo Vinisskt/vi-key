@@ -232,7 +232,7 @@ public class KeyEventHandlerTest extends VimTestBase
   public void colon_copy_flashes_copied_count()
   {
     buffer("hello world", 0, 5);
-    press("esc");
+    press_escape();
     press(":");
     press("c");
     press("o");
@@ -246,7 +246,7 @@ public class KeyEventHandlerTest extends VimTestBase
   public void colon_upper_no_selection_uses_line()
   {
     buffer("ab cd", 2);
-    press("esc");
+    press_escape();
     press(":");
     press("u");
     press("p");
@@ -264,7 +264,7 @@ public class KeyEventHandlerTest extends VimTestBase
   public void colon_paste_with_null_context_is_noop()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("p");
     press("a");
@@ -279,7 +279,7 @@ public class KeyEventHandlerTest extends VimTestBase
   public void colon_addlua_usage_flash()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("a");
     press("d");
@@ -383,7 +383,7 @@ public class KeyEventHandlerTest extends VimTestBase
   public void colon_copy_no_selection_copies_line()
   {
     buffer("aa\nbb\ncc", 3);
-    press("esc");
+    press_escape();
     _handler.execute_vim_command("copy");
     assertTrue(lastStatusText().startsWith("2 copied"));
     assertEquals("aa\nbb\ncc", _conn.text());

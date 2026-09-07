@@ -909,7 +909,7 @@ public final class KeyEventHandler
     b.append("<p><kbd>/</kbd> &rarr; busca incremental &middot; <kbd>n</kbd> / <kbd>N</kbd> &rarr; pr&oacute;ximo / anterior resultado</p>");
 
     b.append("<h2>Mudan&ccedil;a de modo</h2>");
-    b.append("<p><kbd>esc</kbd> ou <kbd>j</kbd><kbd>k</kbd> (no INSERT) &rarr; modo NORMAL</p>");
+    b.append("<p><kbd>ctrl</kbd>+<kbd>esc</kbd> ou <kbd>j</kbd><kbd>k</kbd> (no INSERT) &rarr; modo NORMAL</p>");
     b.append("<p>Contagens funcionam: <kbd>3j</kbd>, <kbd>2dd</kbd>, <kbd>5w</kbd>&hellip;</p>");
     b.append("<p class=\"dim\">No INSERT, toque duplo r&aacute;pido de uma tecla digita o s&iacute;mbolo dela (sw); deslize para o canto tamb&eacute;m.</p>");
 
