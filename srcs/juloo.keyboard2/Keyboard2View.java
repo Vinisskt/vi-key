@@ -206,6 +206,11 @@ public class Keyboard2View extends View
     updateFlags();
   }
 
+  public char getQuickTapSymbol(char c)
+  {
+    return _config.handler.getQuickTapSymbol(c);
+  }
+
   public void onPointerFlagsChanged(boolean shouldVibrate)
   {
     updateFlags();

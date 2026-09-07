@@ -146,8 +146,8 @@ public final class VimEngine
 
   /** Cancels a character buffered by the quick 'jk' escape (the first 'j' of
       an eventual 'jk' sequence), if any. Returns [true] when a buffered
-      character was cancelled. Used by the quick double-tap feature so it can
-      replace the pending character instead of outputting it. */
+      character was cancelled. Not currently used, as the special character is
+      typed directly by the long-press instead of replacing a pending 'j'. */
   boolean cancel_pending_char()
   {
     if (!_pending_jk)

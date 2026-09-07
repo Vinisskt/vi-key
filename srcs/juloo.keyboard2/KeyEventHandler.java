@@ -45,13 +45,10 @@ public final class KeyEventHandler
   LastAction _last_action = null;
   LastAction _next_last_action = null;
 
-  /** Quick double-tap feature. Maps the character of a key to the special
-      character typed when the key is quickly tapped twice. Populated from the
-      layout by [Keyboard2View]. */
+  /** Quick-tap feature. Maps the character of a key to the special
+      character typed when the key is held down. Populated from the layout by
+      [Keyboard2View]. */
   Map<Character, Character> _quick_symbols = new TreeMap<Character, Character>();
-  KeyValue _last_quick_key = null;
-  long _last_quick_time = 0;
-  static final long QUICK_TAP_DELAY_MS = 200;
 
   public KeyEventHandler(IReceiver recv, Suggestions sg)
   {
@@ -141,12 +138,6 @@ public final class KeyEventHandler
     }
     Pointers.Modifiers old_mods = _mods;
     update_meta_state(mods);
-    if (handle_quick_tap(key))
-    {
-      update_meta_state(old_mods);
-      _last_action = _next_last_action;
-      return;
-    }
     if (_vim.on_key(key, _meta_state))
     {
       // The key was handled by the VIM engine.
@@ -172,47 +163,23 @@ public final class KeyEventHandler
   }
 
   /** Called when the keyboard changes. Provides the mapping for the quick
-      double-tap feature: key character -> special character. */
+      long-press feature: key character -> special character. */
   public void quick_tap_symbols(Map<Character, Character> symbols)
   {
     _quick_symbols = (symbols == null) ? new TreeMap<Character, Character>() : symbols;
   }
 
-  /** Types the special character of a key when it is quickly tapped twice.
-      Returns [true] when the event was consumed. Only active while the VIM
-      engine accepts text input and for keys that have a symbol mapped. */
-  private boolean handle_quick_tap(KeyValue key)
+  /** The special character typed by holding a quick-tap key. [0] means the
+      hold should fall back to the normal long-press behaviour (no symbol).
+      Available in every VIM mode: in NORMAL mode the symbols that are VIM
+      commands ([:], [/], [?]&hellip;) are handed to the engine as usual, which
+      makes entering command/search/help modes easier by holding a key. */
+  public char getQuickTapSymbol(char c)
   {
-    if (!_vim.is_insert() || key.getKind() != KeyValue.Kind.Char ||
-        _quick_symbols.isEmpty())
-    {
-      _last_quick_key = null;
-      return false;
-    }
-    char main = key.getChar();
-    long now = SystemClock.uptimeMillis();
-    if (key.equals(_last_quick_key) &&
-        (now - _last_quick_time) <= QUICK_TAP_DELAY_MS)
-    {
-      Character symbol = _quick_symbols.get(main);
-      if (symbol != null)
-      {
-        // Cancel a character buffered by the quick 'jk' escape, or undo the
-        // character already typed by the first tap.
-        if (!_vim.cancel_pending_char())
-        {
-          InputConnection conn = _recv.getCurrentInputConnection();
-          if (conn != null)
-            conn.deleteSurroundingText(1, 0);
-        }
-        send_text(String.valueOf(symbol));
-        _last_quick_key = null;
-        return true;
-      }
-    }
-    _last_quick_key = key;
-    _last_quick_time = now;
-    return false;
+    if (_quick_symbols.isEmpty())
+      return 0;
+    Character symbol = _quick_symbols.get(c);
+    return (symbol == null) ? 0 : symbol.charValue();
   }
 
   /** When the floating browser is open, keys go straight to it (no VIM
@@ -911,7 +878,7 @@ public final class KeyEventHandler
     b.append("<h2>Mudan&ccedil;a de modo</h2>");
     b.append("<p><kbd>ctrl</kbd>+<kbd>esc</kbd> ou <kbd>j</kbd><kbd>k</kbd> (no INSERT) &rarr; modo NORMAL</p>");
     b.append("<p>Contagens funcionam: <kbd>3j</kbd>, <kbd>2dd</kbd>, <kbd>5w</kbd>&hellip;</p>");
-    b.append("<p class=\"dim\">No INSERT, toque duplo r&aacute;pido de uma tecla digita o s&iacute;mbolo dela (sw); deslize para o canto tamb&eacute;m.</p>");
+    b.append("<p class=\"dim\">Segurar uma tecla digita o s&iacute;mbolo dela (sw), no INSERT e no NORMAL; s&iacute;mbolos que s&atilde;o comandos Vim (<kbd>:</kbd> comando, <kbd>/</kbd> busca, <kbd>?</kbd> ajuda) entram nos modos correspondentes. Deslize para o canto tamb&eacute;m.</p>");
 
     b.append("<h2>Comandos <kbd>:</kbd></h2>");
     String[][] cmds = {
@@ -929,6 +896,31 @@ public final class KeyEventHandler
     };
     for (String[] c : cmds)
       b.append("<p><kbd>:").append(c[0]).append("</kbd> &mdash; ").append(c[1]).append("</p>");
+
+    b.append("<h2>Scripts Lua</h2>");
+    b.append("<p>Coloque arquivos <kbd>.lua</kbd> em <kbd>/sdcard/keyboard-lua</kbd> " +
+        "(ou em <kbd>/sdcard/keyboard-lua/plugins</kbd>) e recarregue com <kbd>:reload</kbd>. " +
+        "Cada arquivo vira um comando <kbd>:&lt;nome&gt;</kbd>, em que <kbd>nome</kbd> " +
+        "&eacute; o nome do arquivo sem o <kbd>.lua</kbd>.</p>");
+    b.append("<p>No Android 11+, essa pasta usa a permiss&atilde;o &ldquo;acesso a todos os " +
+        "arquivos&rdquo;; sem ela os scripts ficam na pasta privada do aplicativo e o " +
+        "teclado avisa na barra de status.</p>");
+    b.append("<p>API dispon&iacute;vel para os scripts (<kbd>vim.*</kbd>): " +
+        "<kbd>register</kbd>, <kbd>get_text</kbd>, <kbd>get_sel</kbd>, <kbd>set_sel</kbd>, " +
+        "<kbd>replace</kbd>, <kbd>send</kbd>, <kbd>copy</kbd>, <kbd>paste</kbd>, " +
+        "<kbd>clipboard</kbd>, <kbd>status</kbd> &mdash; detalhes no c&oacute;digo-fonte " +
+        "do <kbd>LuaEngine</kbd>.</p>");
+
+    b.append("<h2>Conectar com o Termux</h2>");
+    b.append("<p>Os scripts s&atilde;o lidos da mesma pasta de armazenamento compartilhado " +
+        "usada para trocar arquivos com o Termux: no Termux ela aparece em " +
+        "<kbd>~/storage/keyboard-lua/</kbd>. Isso permite escrever um script no Termux " +
+        "(ex.: com <kbd>nano ~/storage/keyboard-lua/meu.lua</kbd>), rodar <kbd>:reload</kbd> " +
+        "no teclado e usar o comando <kbd>:meu</kbd> ali na hora.</p>");
+    b.append("<p>Essa conex&atilde;o &eacute; opcional: enquanto a permiss&atilde;o de acesso a " +
+        "todos os arquivos n&atilde;o for concedida, os scripts ficam na pasta privada e s&atilde;o " +
+        "invis&iacute;veis para o Termux. Voc&ecirc; decide se quer conectar os dois ou manter " +
+        "os scripts apenas no teclado.</p>");
     b.append("</body></html>");
     return b.toString();
   }

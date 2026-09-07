@@ -138,6 +138,9 @@ public class PointersTest
     { flagsChanged.add(shouldVibrate); }
     @Override public void onPointerHold(KeyValue k, Pointers.Modifiers mods)
     { holds.add(k.toString()); }
+    char _quickSymbol = 0;
+    @Override public char getQuickTapSymbol(char c)
+    { return _quickSymbol; }
   }
 
   int timeoutWhatOf(int i)
@@ -498,6 +501,31 @@ public class PointersTest
   @Test
   public void long_press_repeats_a_char_key()
   {
+    _ptrs.onTouchDown(0, 0, 1, plainKey());
+    Message m = new Message();
+    m.what = timeoutWhatOf(0);
+    assertTrue(_ptrs.handleMessage(m));
+    assertFalse(_events.holds.isEmpty());
+  }
+
+  @Test
+  public void long_press_types_quick_symbol_without_repeating()
+  {
+    _events._quickSymbol = '!'; // 'a' holds down -> types '!'
+    _ptrs.onTouchDown(0, 0, 1, plainKey());
+    Message m = new Message();
+    m.what = timeoutWhatOf(0);
+    assertTrue(_ptrs.handleMessage(m));
+    // The special char is typed once via onPointerDown and never repeats.
+    assertEquals(KeyValue.makeCharKey('!').toString() + "/swipe",
+        _events.downs.get(_events.downs.size() - 1));
+    assertTrue(_events.holds.isEmpty());
+  }
+
+  @Test
+  public void long_press_without_quick_symbol_repeats_as_before()
+  {
+    _events._quickSymbol = 0;
     _ptrs.onTouchDown(0, 0, 1, plainKey());
     Message m = new Message();
     m.what = timeoutWhatOf(0);

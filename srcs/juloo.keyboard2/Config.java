@@ -166,7 +166,7 @@ public final class Config
     slide_step_px = slider_sensitivity * swipe_scaling;
     vibrate_custom = _prefs.getBoolean("vibrate_custom", false);
     vibrate_duration = _prefs.getInt("vibrate_duration", 20);
-    longPressTimeout = _prefs.getInt("longpress_timeout", 600);
+    longPressTimeout = _prefs.getInt("longpress_timeout", 150);
     longPressInterval = _prefs.getInt("longpress_interval", 65);
     keyrepeat_enabled = _prefs.getBoolean("keyrepeat_enabled", true);
     margin_bottom = get_dip_pref_oriented(dm, "margin_bottom", 7, 3);
@@ -344,8 +344,11 @@ public final class Config
     public void mods_changed(Pointers.Modifiers mods);
     public void suggestion_entered(String text);
     /** Called when the keyboard changes to provide the mapping of the quick
-        double-tap feature. Default implementation does nothing. */
+        long-press feature. Default implementation does nothing. */
     default public void quick_tap_symbols(Map<Character, Character> symbols) {}
+    /** The special character to type for a quick-tap key held down. [0] when
+        none. */
+    public char getQuickTapSymbol(char c);
   }
 
   /** Config migrations. */

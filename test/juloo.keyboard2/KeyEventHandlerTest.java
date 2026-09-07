@@ -182,30 +182,41 @@ public class KeyEventHandlerTest extends VimTestBase
   }
 
   @Test
-  public void quick_double_tap_types_symbol()
+  public void quick_double_tap_removed_single_tap_types_main_char()
   {
+    // The old double-tap behaviour is gone: each tap types the main char.
     TreeMap<Character, Character> symbols = new TreeMap<Character, Character>();
     symbols.put('x', '\u20AC');
     _handler.quick_tap_symbols(symbols);
     buffer("", 0);
     press("x");
     press("x");
-    assertEquals("\u20AC", _conn.text());
-    assertEquals(1, _conn.deletions.size());
-    assertEquals("1:0", _conn.deletions.get(0));
+    assertEquals("xx", _conn.text());
   }
 
   @Test
-  public void quick_double_tap_cancels_pending_j()
+  public void getQuickTapSymbol_maps_only_in_insert_with_symbol()
   {
     TreeMap<Character, Character> symbols = new TreeMap<Character, Character>();
-    symbols.put('j', 'J');
+    symbols.put('x', '\u20AC');
     _handler.quick_tap_symbols(symbols);
-    buffer("", 0);
-    press("j");
-    press("j");
-    // First tap is a pending quick-tap, the second turns it into 'J'.
-    assertEquals("J", _conn.text());
+    assertEquals('\u20AC', _handler.getQuickTapSymbol('x'));
+    assertEquals(0, _handler.getQuickTapSymbol('z')); // no mapping
+    _handler.quick_tap_symbols(null);
+    assertEquals(0, _handler.getQuickTapSymbol('x')); // cleared
+  }
+
+  @Test
+  public void getQuickTapSymbol_is_available_in_normal_mode()
+  {
+    TreeMap<Character, Character> symbols = new TreeMap<Character, Character>();
+    symbols.put('x', '\u20AC');
+    _handler.quick_tap_symbols(symbols);
+    // Leave insert mode: the symbol must still be offered (e.g. ':' over 'p'
+    // in normal mode enters command mode).
+    press_escape();
+    assertFalse(insert());
+    assertEquals('\u20AC', _handler.getQuickTapSymbol('x'));
   }
 
   @Test
