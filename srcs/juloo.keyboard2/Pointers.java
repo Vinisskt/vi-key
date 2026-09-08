@@ -23,6 +23,9 @@ public final class Pointers implements Handler.Callback
   public static final int FLAG_P_CLEAR_LATCHED = (1 << 6);
   /** Can't be locked, even when long pressing. */
   public static final int FLAG_P_CANT_LOCK = (1 << 7);
+  /** The quick-tap symbol has been typed for this pointer; on release the
+      original key must not produce its key_up (no letter after the symbol). */
+  public static final int FLAG_P_QUICK_TAP = (1 << 8);
 
   private Handler _longpress_handler;
   private ArrayList<Pointer> _ptrs = new ArrayList<Pointer>();
@@ -179,7 +182,10 @@ public final class Pointers implements Handler.Callback
     {
       clearLatched();
       removePtr(ptr);
-      _handler.onPointerUp(ptr_value, ptr.modifiers);
+      // A quick-tap symbol was already typed while holding the key; releasing
+      // must not also type the original character (e.g. ':' then 'p').
+      if ((ptr.flags & FLAG_P_QUICK_TAP) == 0)
+        _handler.onPointerUp(ptr_value, ptr.modifiers);
     }
   }
 
@@ -451,12 +457,14 @@ public final class Pointers implements Handler.Callback
     if (ptr.hasFlagsAny(FLAG_P_LATCHED) || ptr.value == null)
       return;
     // Quick-tap symbol: type the special character once and stop (no repeat).
-    // Do NOT change ptr.value, so the original key still gets its key_up.
+    // Do NOT change ptr.value, so the pointer keys state is preserved; the
+    // FLAG_P_QUICK_TAP flag makes the release skip the original key's key_up.
     if (ptr.value.getKind() == KeyValue.Kind.Char)
     {
       char symbol = _handler.getQuickTapSymbol(ptr.value.getChar());
       if (symbol != 0)
       {
+        ptr.flags |= FLAG_P_QUICK_TAP;
         _handler.onQuickTapSymbol(symbol);
         return;
       }
