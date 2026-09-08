@@ -34,11 +34,11 @@
     <key c="w" sw="&gt;"/>
     <key c="e" sw="["/>
     <key c="r" sw="{"/>
-    <key c="t" sw="/"/>
-    <key c="y" sw="&amp;"/>
-    <key c="u" sw="*"/>
+    <key c="t" sw="}"/>
+    <key c="y" sw="]"/>
+    <key c="u" sw="+"/>
     <key c="i" sw="-"/>
-    <key c="o" sw="=" ne="+"/>
+    <key c="o" sw="="/>
     <key c="p" sw=":"/>
   </row>
   <row>

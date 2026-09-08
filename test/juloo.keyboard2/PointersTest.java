@@ -525,6 +525,26 @@ public class PointersTest
   }
 
   @Test
+  public void quick_symbol_release_does_not_type_original_key()
+  {
+    _events._quickSymbol = '!'; // 'a' holds down -> types '!'
+    _ptrs.onTouchDown(0, 0, 1, plainKey());
+    // The initial touch produced exactly one down event for 'a'.
+    int downs_after_down = _events.downs.size();
+    int ups_before = _events.ups.size();
+    Message m = new Message();
+    m.what = timeoutWhatOf(0);
+    assertTrue(_ptrs.handleMessage(m));
+    // The quick symbol fired without an extra pointer down and never repeats.
+    assertEquals(downs_after_down, _events.downs.size());
+    assertEquals(1, _events.quickSymbols.size());
+    // Release: the letter 'a' must NOT be typed after the quick symbol.
+    _ptrs.onTouchUp(1);
+    assertEquals(downs_after_down, _events.downs.size());
+    assertEquals(ups_before, _events.ups.size());
+  }
+
+  @Test
   public void long_press_without_quick_symbol_repeats_as_before()
   {
     _events._quickSymbol = 0;
