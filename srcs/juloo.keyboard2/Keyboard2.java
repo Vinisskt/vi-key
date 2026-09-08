@@ -588,6 +588,11 @@ public class Keyboard2 extends InputMethodService
       BrowserActivity.open_help(Keyboard2.this);
     }
 
+    public void open_page(String title, String html)
+    {
+      BrowserActivity.open_page(Keyboard2.this, title, html);
+    }
+
     public void set_suggestions(Suggestions suggestions)
     {
       _candidates_view.set_candidates(suggestions);

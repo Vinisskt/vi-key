@@ -4,6 +4,9 @@
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
 
   <application android:label="@string/app_name" android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:hardwareAccelerated="false">
     <service android:name="juloo.keyboard2.Keyboard2" android:label="@string/app_name" android:permission="android.permission.BIND_INPUT_METHOD" android:exported="true" android:directBootAware="true">
@@ -26,7 +29,7 @@
       </intent-filter>
     </activity>
 
-    <activity android:name="juloo.keyboard2.BrowserActivity" android:exported="false" android:hardwareAccelerated="true" android:excludeFromRecents="true" android:theme="@style/appTheme" android:windowSoftInputMode="stateVisible|adjustResize"/>
+    <activity android:name="juloo.keyboard2.BrowserActivity" android:exported="false" android:hardwareAccelerated="true" android:excludeFromRecents="true" android:theme="@style/browserTheme" android:windowSoftInputMode="stateVisible|adjustResize"/>
 
     <activity android:name="juloo.keyboard2.dict.DictionariesActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/appTheme" android:exported="true" android:directBootAware="true">
       <intent-filter>

@@ -206,6 +206,18 @@ public class Keyboard2View extends View
     updateFlags();
   }
 
+  public char getQuickTapSymbol(char c)
+  {
+    return _config.handler.getQuickTapSymbol(c);
+  }
+
+  public void onQuickTapSymbol(char symbol)
+  {
+    KeyValue kv = KeyValue.makeCharKey(symbol);
+    _config.handler.key_down(kv, false);
+    _config.handler.key_up(kv, _pointers.getModifiers());
+  }
+
   public void onPointerFlagsChanged(boolean shouldVibrate)
   {
     updateFlags();
@@ -491,7 +503,8 @@ public class Keyboard2View extends View
       return;
     float textSize = scaleTextSize(kv, true);
     Paint p = tc.label_paint(kv.hasFlagsAny(KeyValue.FLAG_KEY_FONT), labelColor(kv, isKeyDown, false), textSize);
-    canvas.drawText(kv.getString(), x, (keyH - p.ascent() - p.descent()) / 2f + y, p);
+    float pad = _config.keyPadding;
+    canvas.drawText(kv.getString(), x, (keyH - 2f * pad - p.ascent() - p.descent()) / 2f + pad + y, p);
   }
 
   private void drawSubLabel(Canvas canvas, KeyValue kv, float x, float y,

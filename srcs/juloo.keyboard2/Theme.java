@@ -48,6 +48,7 @@ public class Theme
   public Theme(Context context, AttributeSet attrs)
   {
     getKeyFont(context); // _key_font will be accessed
+    getSpecialFont(context); // _special_font will be accessed
     TypedArray s = context.getTheme().obtainStyledAttributes(attrs, R.styleable.keyboard, 0, 0);
     hasKeyboardGradient = s.hasValue(R.styleable.keyboard_keyboardGradientStart) && s.hasValue(R.styleable.keyboard_keyboardGradientEnd);
     keyboardGradientStart = s.getColor(R.styleable.keyboard_keyboardGradientStart, 0);
@@ -100,12 +101,20 @@ public class Theme
   }
 
   static Typeface _key_font = null;
+  static Typeface _special_font = null;
 
   static public Typeface getKeyFont(Context context)
   {
     if (_key_font == null)
-      _key_font = Typeface.createFromAsset(context.getAssets(), "special_font.ttf");
+      _key_font = Typeface.createFromAsset(context.getAssets(), "cascadia_mono.ttf");
     return _key_font;
+  }
+
+  static public Typeface getSpecialFont(Context context)
+  {
+    if (_special_font == null)
+      _special_font = Typeface.createFromAsset(context.getAssets(), "special_font.ttf");
+    return _special_font;
   }
 
   public static final class Computed
@@ -221,9 +230,9 @@ public class Theme
         pressed_paint = init_border_paint(config, Math.max(border_width, 2.f), theme.pressedColor);
         pressed_paint.setAlpha(64);
         _label_paint = init_label_paint(config, _key_font);
-        _special_label_paint = init_label_paint(config, _key_font);
+        _special_label_paint = init_label_paint(config, _special_font);
         _sublabel_paint = init_label_paint(config, _key_font);
-        _special_sublabel_paint = init_label_paint(config, _key_font);
+        _special_sublabel_paint = init_label_paint(config, _special_font);
         _label_alpha_bits = (config.labelBrightness & 0xFF) << 24;
       }
 

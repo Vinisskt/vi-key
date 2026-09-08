@@ -81,7 +81,7 @@ public final class LayoutLandscapeModifier
       int row_index)
   {
     List<KeyboardData.Key> mid_keys = LayoutModifier.split_middle_column.keys;
-    if (row_index >= mid_keys.size())
+    if (row_index < 0 || row_index >= mid_keys.size())
       return;
     KeyboardData.Key mid_key = mid_keys.get(row_index);
     KeyboardData.Key right_key = new_keys.get(i);

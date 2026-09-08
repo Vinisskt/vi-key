@@ -19,6 +19,7 @@ public final class FakeReceiver implements KeyEventHandler.IReceiver
   public boolean floatOpen = false;
   public String floatUrl = null;
   public int helpOpened = 0;
+  public final List<String> pages = new ArrayList<String>();
   public boolean suggestionsUpdated = false;
 
   @Override public void handle_event_key(KeyValue.Event ev) { events.add(ev); }
@@ -39,6 +40,8 @@ public final class FakeReceiver implements KeyEventHandler.IReceiver
   { floatOpen = !floatOpen; floatUrl = url; }
   @Override public void close_float_panel() { floatOpen = false; }
   @Override public void open_help() { helpOpened++; }
+  @Override public void open_page(String title, String html)
+  { pages.add(title + "\u0000" + html); }
 
   @Override public void set_suggestions(juloo.keyboard2.suggestions.Suggestions suggestions)
   { suggestionsUpdated = true; }

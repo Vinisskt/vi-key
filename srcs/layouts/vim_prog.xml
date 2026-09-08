@@ -10,10 +10,11 @@
   and [/] are interpreted as Vim commands. Press [esc] (or type [jk]) to
   switch to normal mode and [i] to go back to insert mode.
 
-  Because the layout has the [quick_tap] attribute, in insert mode a quick
-  double-tap of a key types its special character ([sw]) instead of the
-  character twice. It can also still be reached with a swipe towards the
-  bottom-left corner of the key.
+  Because the layout has the [quick_tap] attribute, holding a key types its
+  special character ([sw]) instead of the character twice, both in insert and
+  in normal mode (in normal mode, symbols which are Vim commands — [:] enters
+  command mode, [/] search, [?] help — make entering those modes easy). It can
+  also still be reached with a swipe towards the bottom-left corner of the key.
 -->
 <keyboard name="Vim Programmer" script="latin" bottom_row="false" embedded_number_row="true" quick_tap="true">
   <row height="0.72">
@@ -30,14 +31,14 @@
   </row>
   <row>
     <key c="q" sw="&lt;"/>
-    <key c="w" sw="("/>
+    <key c="w" sw="&gt;"/>
     <key c="e" sw="["/>
     <key c="r" sw="{"/>
     <key c="t" sw="/"/>
     <key c="y" sw="&amp;"/>
     <key c="u" sw="*"/>
     <key c="i" sw="-"/>
-    <key c="o" sw="="/>
+    <key c="o" sw="=" ne="+"/>
     <key c="p" sw=":"/>
   </row>
   <row>
@@ -46,10 +47,10 @@
     <key c="d" sw=";"/>
     <key c="f" sw="\?"/>
     <key c="g" sw="_"/>
-    <key c="h" sw="+"/>
-    <key c="j" sw="{"/>
-    <key c="k" sw="["/>
-    <key c="l" sw="\\"/>
+    <key c="h"/>
+    <key c="j"/>
+    <key c="k"/>
+    <key c="l"/>
   </row>
   <row>
     <key width="1.5" role="action" c="shift"/>
@@ -59,7 +60,7 @@
     <key c="v" sw=","/>
     <key c="b" sw="/"/>
     <key c="n" sw="|"/>
-    <key c="m" sw="!"/>
+    <key c="m" sw="\\"/>
     <key width="1.5" role="action" c="backspace" ne="delete"/>
   </row>
   <row height="0.95">

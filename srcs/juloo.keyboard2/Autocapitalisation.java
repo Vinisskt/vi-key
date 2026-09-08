@@ -33,9 +33,13 @@ public final class Autocapitalisation
    */
   public void started(Config config, InputConnection ic)
   {
+    started(config.autocapitalisation, config.editor_config, ic);
+  }
+
+  void started(boolean autocapitalisation, EditorConfig ec, InputConnection ic)
+  {
     _ic = ic;
-    EditorConfig ec = config.editor_config;
-    if (!config.autocapitalisation || ec.caps_mode == 0)
+    if (!autocapitalisation || ec.caps_mode == 0)
     {
       _enabled = false;
       return;

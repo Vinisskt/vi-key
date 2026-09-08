@@ -182,30 +182,41 @@ public class KeyEventHandlerTest extends VimTestBase
   }
 
   @Test
-  public void quick_double_tap_types_symbol()
+  public void quick_double_tap_removed_single_tap_types_main_char()
   {
+    // The old double-tap behaviour is gone: each tap types the main char.
     TreeMap<Character, Character> symbols = new TreeMap<Character, Character>();
     symbols.put('x', '\u20AC');
     _handler.quick_tap_symbols(symbols);
     buffer("", 0);
     press("x");
     press("x");
-    assertEquals("\u20AC", _conn.text());
-    assertEquals(1, _conn.deletions.size());
-    assertEquals("1:0", _conn.deletions.get(0));
+    assertEquals("xx", _conn.text());
   }
 
   @Test
-  public void quick_double_tap_cancels_pending_j()
+  public void getQuickTapSymbol_maps_only_in_insert_with_symbol()
   {
     TreeMap<Character, Character> symbols = new TreeMap<Character, Character>();
-    symbols.put('j', 'J');
+    symbols.put('x', '\u20AC');
     _handler.quick_tap_symbols(symbols);
-    buffer("", 0);
-    press("j");
-    press("j");
-    // First tap is a pending quick-tap, the second turns it into 'J'.
-    assertEquals("J", _conn.text());
+    assertEquals('\u20AC', _handler.getQuickTapSymbol('x'));
+    assertEquals(0, _handler.getQuickTapSymbol('z')); // no mapping
+    _handler.quick_tap_symbols(null);
+    assertEquals(0, _handler.getQuickTapSymbol('x')); // cleared
+  }
+
+  @Test
+  public void getQuickTapSymbol_is_available_in_normal_mode()
+  {
+    TreeMap<Character, Character> symbols = new TreeMap<Character, Character>();
+    symbols.put('x', '\u20AC');
+    _handler.quick_tap_symbols(symbols);
+    // Leave insert mode: the symbol must still be offered (e.g. ':' over 'p'
+    // in normal mode enters command mode).
+    press_escape();
+    assertFalse(insert());
+    assertEquals('\u20AC', _handler.getQuickTapSymbol('x'));
   }
 
   @Test
@@ -232,7 +243,7 @@ public class KeyEventHandlerTest extends VimTestBase
   public void colon_copy_flashes_copied_count()
   {
     buffer("hello world", 0, 5);
-    press("esc");
+    press_escape();
     press(":");
     press("c");
     press("o");
@@ -246,7 +257,7 @@ public class KeyEventHandlerTest extends VimTestBase
   public void colon_upper_no_selection_uses_line()
   {
     buffer("ab cd", 2);
-    press("esc");
+    press_escape();
     press(":");
     press("u");
     press("p");
@@ -255,13 +266,16 @@ public class KeyEventHandlerTest extends VimTestBase
     press("r");
     press("enter");
     assertEquals("AB CD", _conn.text());
+    assertTrue(_conn.deletions.isEmpty());
+    assertEquals("AB CD".length(), _conn.selStart());
+    assertEquals("AB CD".length(), _conn.selEnd());
   }
 
   @Test
   public void colon_paste_with_null_context_is_noop()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("p");
     press("a");
@@ -276,7 +290,7 @@ public class KeyEventHandlerTest extends VimTestBase
   public void colon_addlua_usage_flash()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("a");
     press("d");
@@ -380,9 +394,87 @@ public class KeyEventHandlerTest extends VimTestBase
   public void colon_copy_no_selection_copies_line()
   {
     buffer("aa\nbb\ncc", 3);
-    press("esc");
+    press_escape();
     _handler.execute_vim_command("copy");
     assertTrue(lastStatusText().startsWith("2 copied"));
     assertEquals("aa\nbb\ncc", _conn.text());
+  }
+
+  @Test
+  public void open_page_escapes_text_into_a_pre_page()
+  {
+    press_escape();
+    _handler.open_page("out", "cpu <amd> & \"ram\"");
+    assertEquals(1, _receiver.pages.size());
+    String shown = _receiver.pages.get(0);
+    assertTrue(shown.startsWith("out\u0000"));
+    assertTrue(shown.contains("<h1>out</h1>"));
+    assertTrue(shown.contains("<pre>cpu &lt;amd&gt; &amp; &quot;ram&quot;</pre>"));
+  }
+
+  @Test
+  public void vim_page_html_is_a_full_document()
+  {
+    String html = KeyEventHandler.vim_page_html("out", "x<y");
+    assertTrue(html.startsWith("<!DOCTYPE html>"));
+    assertTrue(html.endsWith("</body></html>"));
+    assertTrue(html.contains("x&lt;y"));
+  }
+
+  @Test
+  public void execute_vim_command_help_lua_opens_lua_page()
+  {
+    _handler.execute_vim_command("help lua");
+    assertEquals(1, _receiver.pages.size());
+    String shown = _receiver.pages.get(0);
+    assertTrue(shown.startsWith("lua\u0000"));
+    assertTrue(shown.contains("vim.page"));
+    assertTrue(shown.contains("API"));
+  }
+
+  @Test
+  public void execute_vim_command_help_default_opens_basics()
+  {
+    _handler.execute_vim_command("help");
+    assertEquals(1, _receiver.pages.size());
+    assertTrue(_receiver.pages.get(0).contains("vi_key"));
+  }
+
+  @Test
+  public void execute_vim_command_help_unknown_flashes_hint()
+  {
+    _handler.execute_vim_command("help nope");
+    assertTrue(_receiver.pages.isEmpty());
+    assertTrue(lastStatusText().contains("desconhecida"));
+    assertTrue(lastStatusText().contains("nope"));
+  }
+
+  @Test
+  public void ls_help_opens_the_help_index()
+  {
+    _handler.execute_vim_command("ls help");
+    assertEquals(1, _receiver.pages.size());
+    String shown = _receiver.pages.get(0);
+    assertTrue(shown.contains("ajuda"));
+    assertTrue(shown.contains("lua"));
+    assertTrue(shown.contains("termux"));
+    assertTrue(shown.contains("comandos"));
+  }
+
+  @Test
+  public void vim_help_page_html_unknown_returns_null()
+  {
+    assertNull(KeyEventHandler.vim_help_page_html("nope"));
+    assertNull(KeyEventHandler.vim_help_page_html(null));
+  }
+
+  @Test
+  public void vim_help_page_html_aliases_and_known_pages()
+  {
+    assertTrue(KeyEventHandler.vim_help_page_html("ajuda").contains("vi_key"));
+    assertTrue(KeyEventHandler.vim_help_page_html("help").contains("vi_key"));
+    assertTrue(KeyEventHandler.vim_help_page_html("LUA").contains("vim.page"));
+    assertTrue(KeyEventHandler.vim_help_page_html("termux").contains("ipc-loop"));
+    assertTrue(KeyEventHandler.vim_help_page_html("comandos").contains("reload"));
   }
 }

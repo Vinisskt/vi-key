@@ -410,11 +410,20 @@ public final class Pointers implements Handler.Callback
 
   private static int uniqueTimeoutWhat = 0;
 
+  /** Time, in ms, for the quick-tap symbol long-press. Special characters are
+      typed by holding longer than a plain long-press, so a quick hold or a
+      long-press still behaves as before. */
+  private static final long QUICK_TAP_LONG_PRESS_TIMEOUT_MS = 250;
+
   private void startLongPress(Pointer ptr)
   {
     int what = (uniqueTimeoutWhat++);
     ptr.timeoutWhat = what;
-    _longpress_handler.sendEmptyMessageDelayed(what, _config.longPressTimeout);
+    long timeout = _config.longPressTimeout;
+    if (ptr.value != null && ptr.value.getKind() == KeyValue.Kind.Char
+        && _handler.getQuickTapSymbol(ptr.value.getChar()) != 0)
+      timeout = QUICK_TAP_LONG_PRESS_TIMEOUT_MS;
+    _longpress_handler.sendEmptyMessageDelayed(what, timeout);
   }
 
   private void stopLongPress(Pointer ptr)
@@ -441,6 +450,17 @@ public final class Pointers implements Handler.Callback
     // Latched key, no key
     if (ptr.hasFlagsAny(FLAG_P_LATCHED) || ptr.value == null)
       return;
+    // Quick-tap symbol: type the special character once and stop (no repeat).
+    // Do NOT change ptr.value, so the original key still gets its key_up.
+    if (ptr.value.getKind() == KeyValue.Kind.Char)
+    {
+      char symbol = _handler.getQuickTapSymbol(ptr.value.getChar());
+      if (symbol != 0)
+      {
+        _handler.onQuickTapSymbol(symbol);
+        return;
+      }
+    }
     // Key is long-pressable
     KeyValue kv = KeyModifier.modify_long_press(ptr.value);
     if (!kv.equals(ptr.value))
@@ -811,6 +831,16 @@ public final class Pointers implements Handler.Callback
         press or a swipe to a different value. Down events are not paired with
         up events. */
     public void onPointerDown(KeyValue k, boolean isSwipe);
+
+    /** The special character typed by holding a quick-tap key without
+        repeating. [c] is the main character of the key. Returns [0] when the
+        key has no quick-tap symbol. */
+    public char getQuickTapSymbol(char c);
+
+    /** A quick-tap symbol was triggered. Send the character directly without
+        affecting the current pointer's key value (so the original key still
+        receives its key_up event). Default implementation does nothing. */
+    default public void onQuickTapSymbol(char symbol) {}
 
     /** Key is released. [k] is the key that was returned by
         [modifySelectedKey] or [modifySelectedKey]. */

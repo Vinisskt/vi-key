@@ -4,8 +4,8 @@
 
     <!-- Statusline-style header -->
     <LinearLayout android:layout_width="fill_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:background="@color/vi_bg_soft" android:paddingLeft="16dp" android:paddingRight="16dp" android:paddingTop="10dp" android:paddingBottom="10dp">
-      <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="@string/app_name" android:textColor="@color/vi_ink" android:textStyle="bold" android:textSize="20sp" android:fontFamily="monospace"/>
-      <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/launcher_brand_sub" android:textColor="@color/vi_green" android:textSize="12sp" android:fontFamily="monospace"/>
+      <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="@string/app_name" android:textColor="@color/vi_ink" android:textStyle="bold" android:textSize="20sp" android:fontFamily="@font/cascadia_mono"/>
+      <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/launcher_brand_sub" android:textColor="@color/vi_green" android:textSize="12sp" android:fontFamily="@font/cascadia_mono"/>
     </LinearLayout>
 
     <!-- Modes bar, mirroring the on-screen keyboard statusline -->
@@ -13,12 +13,13 @@
       <TextView style="@style/launcher_mode_chip" android:background="@color/vi_blue" android:text="@string/launcher_mode_insert"/>
       <TextView style="@style/launcher_mode_chip" android:background="@color/vi_green" android:text="@string/launcher_mode_normal"/>
       <TextView style="@style/launcher_mode_chip" android:background="@color/vi_yellow" android:text="@string/launcher_mode_search"/>
+      <TextView style="@style/launcher_mode_chip" android:background="@color/vi_orange" android:text="@string/launcher_mode_cmd"/>
       <TextView style="@style/launcher_mode_hint" android:text="@string/launcher_modes_hint"/>
     </LinearLayout>
 
-    <View android:layout_width="fill_parent" android:layout_height="1dp" android:background="@color/vi_accent"/>
+    <View android:layout_width="fill_parent" android:layout_height="1dp" android:layout_marginTop="12dp" android:background="@color/vi_accent"/>
 
-    <TextView style="@style/paragraph" android:text="@string/launcher_description" android:textColor="@color/vi_ink" android:fontFamily="monospace"/>
+    <TextView style="@style/paragraph" android:text="@string/launcher_description" android:textColor="@color/vi_ink" android:fontFamily="@font/cascadia_mono"/>
 
     <Button style="@style/vi_btn" android:text="@string/launcher_button_imesettings" android:onClick="launch_imesettings" android:layout_width="wrap_content"/>
     <Button style="@style/vi_btn" android:text="@string/launcher_button_imepicker" android:onClick="launch_imepicker" android:layout_width="wrap_content"/>
@@ -32,7 +33,7 @@
 
     <View android:layout_width="fill_parent" android:layout_height="1dp" android:layout_marginVertical="12dp" android:background="@color/vi_border"/>
 
-    <TextView style="@style/paragraph" android:text="@string/launcher_sourcecode" android:textColor="@color/vi_ink_dim" android:fontFamily="monospace" android:textSize="12sp"/>
-    <TextView style="@style/paragraph" android:text="@string/launcher_repo_url" android:autoLink="web" android:linksClickable="true" android:textColor="@color/vi_blue" android:fontFamily="monospace" android:textSize="12sp"/>
+    <TextView style="@style/paragraph" android:text="@string/launcher_sourcecode" android:textColor="@color/vi_ink_dim" android:fontFamily="@font/cascadia_mono" android:textSize="12sp"/>
+    <TextView style="@style/paragraph" android:text="@string/launcher_repo_url" android:autoLink="web" android:linksClickable="true" android:textColor="@color/vi_blue" android:fontFamily="@font/cascadia_mono" android:textSize="12sp"/>
   </LinearLayout>
 </ScrollView>

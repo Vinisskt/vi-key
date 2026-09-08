@@ -12,7 +12,7 @@ public class VimEngineTest extends VimTestBase
   public void escapes_to_normal_mode()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     assertTrue(normal());
     assertFalse(insert());
   }
@@ -21,9 +21,18 @@ public class VimEngineTest extends VimTestBase
   public void i_returns_to_insert_mode()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press("i");
     assertTrue(insert());
+  }
+
+  @Test
+  public void plain_esc_in_insert_goes_to_the_app()
+  {
+    buffer("abc", 0);
+    press("esc");
+    assertTrue(insert());
+    assertEquals(2, _conn.keyEvents.size());
   }
 
   // ---- Motions (word/line, selection-based) -----------------------------
@@ -32,7 +41,7 @@ public class VimEngineTest extends VimTestBase
   public void w_moves_over_word_and_spaces()
   {
     buffer("hello world foo", 0);
-    press("esc");
+    press_escape();
     press("w");
     assertEquals(6, _conn.selStart());
     press("w");
@@ -43,7 +52,7 @@ public class VimEngineTest extends VimTestBase
   public void count_motion_repeats()
   {
     buffer("hello world foo", 0);
-    press("esc");
+    press_escape();
     press("2");
     press("w");
     assertEquals(12, _conn.selStart());
@@ -53,7 +62,7 @@ public class VimEngineTest extends VimTestBase
   public void b_moves_word_backward()
   {
     buffer("hello world foo", 12);
-    press("esc");
+    press_escape();
     press("b");
     assertEquals(6, _conn.selStart());
   }
@@ -62,7 +71,7 @@ public class VimEngineTest extends VimTestBase
   public void e_moves_to_word_end()
   {
     buffer("hello world", 0);
-    press("esc");
+    press_escape();
     press("e");
     assertEquals(4, _conn.selStart());
   }
@@ -71,7 +80,7 @@ public class VimEngineTest extends VimTestBase
   public void gg_moves_to_document_start()
   {
     buffer("foo bar", 5);
-    press("esc");
+    press_escape();
     press("g");
     press("g");
     assertEquals(0, _conn.selStart());
@@ -81,7 +90,7 @@ public class VimEngineTest extends VimTestBase
   public void G_moves_to_document_end()
   {
     buffer("foo bar", 0);
-    press("esc");
+    press_escape();
     press("G");
     assertEquals(7, _conn.selStart());
   }
@@ -90,7 +99,7 @@ public class VimEngineTest extends VimTestBase
   public void count_G_moves_to_line()
   {
     buffer("aa\nbb\ncc", 0);
-    press("esc");
+    press_escape();
     press("2");
     press("G");
     assertEquals(3, _conn.selStart());
@@ -102,21 +111,21 @@ public class VimEngineTest extends VimTestBase
   public void count_h_emits_dpad_events()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press("3");
     press("h");
-    assertEquals(6, _conn.keyEvents.size());
+    assertEquals(8, _conn.keyEvents.size());
   }
 
   @Test
   public void col_start_end_emit_home_end_events()
   {
     buffer("abc", 1);
-    press("esc");
+    press_escape();
     press("0");
-    assertEquals(2, _conn.keyEvents.size());
-    press("$");
     assertEquals(4, _conn.keyEvents.size());
+    press("$");
+    assertEquals(6, _conn.keyEvents.size());
   }
 
   @Test
@@ -146,7 +155,7 @@ public class VimEngineTest extends VimTestBase
   public void o_opens_line_below_and_enters_insert()
   {
     buffer("abc\ndef", 2);
-    press("esc");
+    press_escape();
     press("o");
     assertTrue(insert());
     assertEquals("abc\n\ndef", _conn.text());
@@ -157,7 +166,7 @@ public class VimEngineTest extends VimTestBase
   public void O_opens_line_above_and_enters_insert()
   {
     buffer("abc\ndef", 2);
-    press("esc");
+    press_escape();
     press("O");
     assertTrue(insert());
     assertEquals("\nabc\ndef", _conn.text());
@@ -170,7 +179,7 @@ public class VimEngineTest extends VimTestBase
   public void x_deletes_character()
   {
     buffer("hello", 1);
-    press("esc");
+    press_escape();
     press("x");
     assertEquals("hllo", _conn.text());
   }
@@ -179,7 +188,7 @@ public class VimEngineTest extends VimTestBase
   public void count_x_deletes_many()
   {
     buffer("hello", 0);
-    press("esc");
+    press_escape();
     press("2");
     press("x");
     assertEquals("llo", _conn.text());
@@ -189,7 +198,7 @@ public class VimEngineTest extends VimTestBase
   public void x_deletes_selection()
   {
     buffer("hello", 1, 4);
-    press("esc");
+    press_escape();
     press("x");
     assertEquals("ho", _conn.text());
     assertEquals(1, _conn.selStart());
@@ -199,7 +208,7 @@ public class VimEngineTest extends VimTestBase
   public void dd_deletes_line()
   {
     buffer("aa\nbb\ncc", 0);
-    press("esc");
+    press_escape();
     press("d");
     press("d");
     assertEquals("bb\ncc", _conn.text());
@@ -210,7 +219,7 @@ public class VimEngineTest extends VimTestBase
   public void count_dd_deletes_lines()
   {
     buffer("aa\nbb\ncc", 0);
-    press("esc");
+    press_escape();
     press("2");
     press("d");
     press("d");
@@ -221,7 +230,7 @@ public class VimEngineTest extends VimTestBase
   public void dw_deletes_word()
   {
     buffer("hello world", 0);
-    press("esc");
+    press_escape();
     press("d");
     press("w");
     assertEquals("world", _conn.text());
@@ -231,7 +240,7 @@ public class VimEngineTest extends VimTestBase
   public void de_deletes_to_word_end()
   {
     buffer("hello world", 0);
-    press("esc");
+    press_escape();
     press("d");
     press("e");
     assertEquals(" world", _conn.text());
@@ -241,7 +250,7 @@ public class VimEngineTest extends VimTestBase
   public void d_dollar_deletes_to_column_end()
   {
     buffer("hello world", 3);
-    press("esc");
+    press_escape();
     press("d");
     press("$");
     assertEquals("hel", _conn.text());
@@ -251,7 +260,7 @@ public class VimEngineTest extends VimTestBase
   public void d0_deletes_to_column_start()
   {
     buffer("hello world", 3);
-    press("esc");
+    press_escape();
     press("d");
     press("0");
     assertEquals("lo world", _conn.text());
@@ -276,7 +285,7 @@ public class VimEngineTest extends VimTestBase
   public void search_selects_match_as_typed()
   {
     buffer("hello world", 0);
-    press("esc");
+    press_escape();
     press("/");
     press("w");
     press("o");
@@ -288,7 +297,7 @@ public class VimEngineTest extends VimTestBase
   public void backspace_edits_search_query()
   {
     buffer("hello world", 0);
-    press("esc");
+    press_escape();
     press("/");
     press("w");
     press("o");
@@ -302,7 +311,7 @@ public class VimEngineTest extends VimTestBase
   public void search_commit_then_n_and_N_navigate()
   {
     buffer("foo bar foo", 0);
-    press("esc");
+    press_escape();
     press("/");
     press("f");
     press("o");
@@ -323,7 +332,7 @@ public class VimEngineTest extends VimTestBase
   public void search_no_match_marks_status_and_enter_returns_normal()
   {
     buffer("hello", 0);
-    press("esc");
+    press_escape();
     press("/");
     press("z");
     press("z");
@@ -336,10 +345,10 @@ public class VimEngineTest extends VimTestBase
   public void esc_cancels_search()
   {
     buffer("hello", 0);
-    press("esc");
+    press_escape();
     press("/");
     press("e");
-    press("esc");
+    press_escape();
     assertTrue(normal());
   }
 
@@ -349,7 +358,7 @@ public class VimEngineTest extends VimTestBase
   public void colon_upper_transforms_selection()
   {
     buffer("hello world", 0, 5);
-    press("esc");
+    press_escape();
     press(":");
     press("u");
     press("p");
@@ -359,13 +368,20 @@ public class VimEngineTest extends VimTestBase
     assertEquals(":upper", lastStatusText());
     press("enter");
     assertEquals("HELLO world", _conn.text());
+    // The replacement must go through commitText over the selection, without
+    // deleteSurroundingText (whose after length is ignored by some editors,
+    // e.g. Termux), so the original text is actually removed.
+    assertTrue("expected selection to be replaced in place",
+        _conn.deletions.isEmpty());
+    assertEquals("HELLO".length(), _conn.selStart());
+    assertEquals("HELLO".length(), _conn.selEnd());
   }
 
   @Test
   public void colon_lower_transforms_line()
   {
     buffer("AB cd", 2);
-    press("esc");
+    press_escape();
     press(":");
     press("l");
     press("o");
@@ -374,13 +390,18 @@ public class VimEngineTest extends VimTestBase
     press("r");
     press("enter");
     assertEquals("ab cd", _conn.text());
+    // Same as colon_upper_transforms_selection: in-place replacement, no
+    // deleteSurroundingText, cursor ends up after the replaced line.
+    assertTrue(_conn.deletions.isEmpty());
+    assertEquals("ab cd".length(), _conn.selStart());
+    assertEquals("ab cd".length(), _conn.selEnd());
   }
 
   @Test
   public void colon_title_transforms_selection()
   {
     buffer("hELLO WORLD", 0, 5);
-    press("esc");
+    press_escape();
     press(":");
     press("t");
     press("i");
@@ -395,7 +416,7 @@ public class VimEngineTest extends VimTestBase
   public void colon_goto_line()
   {
     buffer("a\nb\nc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("g");
     press("o");
@@ -411,7 +432,7 @@ public class VimEngineTest extends VimTestBase
   public void colon_unknown_command_flashes()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("z");
     press("z");
@@ -421,21 +442,22 @@ public class VimEngineTest extends VimTestBase
   }
 
   @Test
-  public void colon_help_flashes_commands()
+  public void colon_help_opens_the_basics_page()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("h");
     press("enter");
-    assertTrue(_receiver.lastStatus().contains("copy paste undo"));
+    assertEquals(1, _receiver.pages.size());
+    assertTrue(_receiver.pages.get(0).contains("vi_key"));
   }
 
   @Test
   public void colon_float_toggles_browser()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("b");
     press("r");
@@ -449,7 +471,7 @@ public class VimEngineTest extends VimTestBase
   public void colon_browser_with_url()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("b");
     press("r");
@@ -464,7 +486,7 @@ public class VimEngineTest extends VimTestBase
   public void backspace_in_command_line()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("u");
     press("backspace");
@@ -482,10 +504,10 @@ public class VimEngineTest extends VimTestBase
   public void esc_cancels_command_line()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("x");
-    press("esc");
+    press_escape();
     assertTrue(normal());
     assertEquals("abc", _conn.text());
   }
@@ -494,9 +516,9 @@ public class VimEngineTest extends VimTestBase
   public void enter_in_normal_moves_down()
   {
     buffer("a\nb\nc", 0);
-    press("esc");
+    press_escape();
     press("enter");
-    assertEquals(2, _conn.keyEvents.size());
+    assertEquals(4, _conn.keyEvents.size());
     assertEquals("a\nb\nc", _conn.text());
   }
 
@@ -504,13 +526,13 @@ public class VimEngineTest extends VimTestBase
   public void space_bar_types_in_command_and_search()
   {
     buffer("a b", 0);
-    press("esc");
+    press_escape();
     press("/");
     press("space");
     assertEquals(1, _conn.selStart());
     assertEquals(2, _conn.selEnd());
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press(":");
     press("space");
     assertEquals(": ", lastStatusText());
@@ -522,7 +544,7 @@ public class VimEngineTest extends VimTestBase
   public void question_mark_opens_help()
   {
     buffer("abc", 0);
-    press("esc");
+    press_escape();
     press("?");
     assertEquals(1, _receiver.helpOpened);
     assertTrue(_receiver.lastStatus().contains("ajuda"));

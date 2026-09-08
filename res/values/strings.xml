@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name_release">vi_key</string>
-    <string name="app_name_debug">vi_key</string>
+    <string name="app_name_release">vi-key</string>
+    <string name="app_name_debug">vi-key</string>
     <string name="short_description">Lightweight and privacy-conscious virtual keyboard for Android.</string>
     <string name="store_description">The main feature is that you can type more characters by swiping the keys towards the corners.\n\nThis application was originally designed for programmers using Termux.\nNow perfect for everyday use.\n\nThis application contains no ads and is Open Source.</string>
     <string name="pref_portrait">In portrait mode</string>
@@ -9,6 +9,11 @@
     <string name="pref_landscape">In landscape mode</string>
     <string name="pref_landscape_unfolded">In landscape mode unfolded</string>
     <string name="pref_category_layout">Layout</string>
+    <string name="pref_lua_scripts_title">Lua scripts</string>
+    <string name="pref_lua_scripts_summary">Scripts in [keyboard-lua] are run as commands (:&lt;filename-without-lua&gt;). Tap to grant All files access.</string>
+    <string name="pref_lua_scripts_folder">Scripts folder: /sdcard/keyboard-lua</string>
+    <string name="pref_lua_scripts_granted">All files access granted</string>
+    <string name="pref_lua_scripts_grant">Tap to grant All files access</string>
     <string name="pref_label_brightness">Adjust label brightness</string>
     <string name="pref_keyboard_opacity">Adjust keyboard background opacity</string>
     <string name="pref_key_opacity">Adjust key opacity</string>
@@ -114,15 +119,16 @@
     <string name="launcher_button_imesettings">Enable keyboard</string>
     <string name="launcher_button_imepicker">Select keyboard</string>
     <string name="launcher_button_dictionaries">Install dictionaries</string>
-    <string name="launcher_description">This application is a virtual keyboard. Go to the system settings by clicking on the button below and enable vi_key.</string>
-    <string name="launcher_sourcecode">This is a free and open source application. You can find the source code or report bugs on GitHub.</string>
+    <string name="launcher_description">vi-key is a fork of the Unexpected Keyboard, a virtual keyboard. Go to the system settings by clicking on the button below and enable vi-key.</string>
+    <string name="launcher_sourcecode">vi-key is a free and open source fork of the Unexpected Keyboard. It follows the same direction as the original project: report bugs or send suggestions on our GitHub below, and feel free to also try the Unexpected Keyboard itself.</string>
     <string name="launcher_tryhere">After enabling, you can try the keyboard here:</string>
     <string name="launcher_tryhere_hint">Try here</string>
-    <string name="launcher_brand_sub">modal vim keyboard</string>
+    <string name="launcher_brand_sub">fork of the Unexpected Keyboard</string>
     <string name="launcher_mode_insert">INSERT</string>
     <string name="launcher_mode_normal">NORMAL</string>
     <string name="launcher_mode_search">SEARCH</string>
-    <string name="launcher_modes_hint">to exit insert: jk or esc · quick double-tap types the key\'s symbol</string>
+    <string name="launcher_mode_cmd">CMD</string>
+    <string name="launcher_modes_hint">to exit insert: jk or ctrl+esc · quick double-tap types the key\'s symbol</string>
     <string name="key_descr_capslock">Caps lock</string>
     <string name="key_descr_compose">Compose</string>
     <string name="key_descr_switch_greekmath">Greek &amp; math symbols</string>

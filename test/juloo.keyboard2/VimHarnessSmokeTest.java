@@ -25,18 +25,18 @@ public class VimHarnessSmokeTest extends VimTestBase
   {
     buffer("abcd", 0);
     assertTrue(insert());
-    press("esc");
+    press_escape();
     assertTrue(normal());
     press("l");
     press("l");
-    assertEquals(4, _conn.keyEvents.size());
+    assertEquals(6, _conn.keyEvents.size());
   }
 
   @Test
   public void w_word_motion_moves_selection()
   {
     buffer("hello world", 0);
-    press("esc");
+    press_escape();
     press("w");
     assertEquals(6, _conn.selStart());
   }

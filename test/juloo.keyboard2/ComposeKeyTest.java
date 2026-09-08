@@ -66,6 +66,56 @@ public class ComposeKeyTest
     assertEquals(apply(apply(" "), key("space")), key("nbsp"));
   }
 
+  @Test
+  public void applyKeyValue() throws Exception
+  {
+    int fn = ComposeKeyData.fn;
+    // Char keys are applied through their char value.
+    assertEquals(key("f1"), ComposeKey.apply(fn, str("1")));
+    // The space bar editing key behaves like a space.
+    assertEquals(key("nbsp"), ComposeKey.apply(fn, key("space")));
+    // Multi-char string keys are applied character by character.
+    assertNull(ComposeKey.apply(fn, str("zzz")));
+    // Editing keys other than the space bar are ignored.
+    assertNull(ComposeKey.apply(fn, key("backspace")));
+    // Other kinds are ignored.
+    assertNull(ComposeKey.apply(fn, key("capslock")));
+    assertNull(ComposeKey.apply(fn, key("shift")));
+  }
+
+  @Test
+  public void transformChar() throws Exception
+  {
+    int fn = ComposeKeyData.fn;
+    int shift = ComposeKeyData.shift;
+    // Final char state: single-char substitutions from fn.
+    assertEquals('\u00E6', transform_char(fn, 'a'));
+    assertEquals('\u2039', transform_char(fn, '{'));
+    // The space in fn resolves to the string key 'nbsp', not a char.
+    assertEquals(0, transform_char(fn, ' '));
+    // Intermediate state: not a final state yet.
+    assertEquals(0, transform_char(ComposeKeyData.compose, 'q'));
+    // String final state and no-match are not single-char substitutions.
+    assertEquals(0, transform_char(fn, '1'));
+    assertEquals(0, transform_char(fn, '\u00A0'));
+  }
+
+  @Test
+  public void applyStringEdgeCases() throws Exception
+  {
+    int fn = ComposeKeyData.fn;
+    // An empty sequence never matches.
+    assertNull(ComposeKey.apply(fn, ""));
+    // A final state reached before the end of the string stops the sequence.
+    assertNull(apply("1,", fn));
+    assertNull(apply(" ,", fn));
+  }
+
+  char transform_char(int state, char c)
+  {
+    return ComposeKey.transform_char(state, c);
+  }
+
   KeyValue apply(String seq)
   {
     return ComposeKey.apply(ComposeKeyData.compose, seq);

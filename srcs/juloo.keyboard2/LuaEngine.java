@@ -3,6 +3,8 @@ package juloo.keyboard2;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.os.Build;
+import android.os.Environment;
 import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.InputConnection;
 import java.io.ByteArrayInputStream;
@@ -10,11 +12,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaTable;
@@ -27,10 +30,16 @@ import org.luaj.vm2.lib.ZeroArgFunction;
 import org.luaj.vm2.lib.jse.JsePlatform;
 
 /** Lua scripting support for the Vim command line.
-    [.lua] files dropped in the app private directory [files/lua] are loaded
-    at startup (or when the [reload] command is run). Scripts register commands
-    through [vim.register("name", function(args)...)]. Import of new scripts
-    can also be done from the command line through [addlua] (which saves the
+    [.lua] files dropped in the [keyboard-lua] directory of the user visible
+    storage (or in the app private directory [files/lua] when that folder is
+    not accessible) are loaded at startup (or when the [reload] command is
+    run). Scripts can also be kept in the [keyboard-lua/plugins] subfolder,
+    which is scanned as well. Every script can be run from the command line
+    as [:<name>] where [name] is the file name without the [.lua] extension;
+    the command line arguments are passed to the script as the Lua vararg
+    [...]. Scripts can also register named commands through
+    [vim.register("name", function(args) ...)]. Import of new scripts can
+    also be done from the command line through [addlua] (which saves the
     content of the system clipboard as a script) and [rmlua].
 
     API exposed to scripts in the global table [vim]:
@@ -42,18 +51,57 @@ import org.luaj.vm2.lib.jse.JsePlatform;
       - [vim.send(text)]: insert text at the cursor
       - [vim.copy(text)] / [vim.paste()] / [vim.clipboard()]: system clipboard
       - [vim.status(text)]: show a transient message in the keyboard status bar
+      - [vim.page(text)]: open (or update) a browser page showing [text] as
+        plain text, styled like the help page
     Positions are relative to the beginning of the text returned by
     [vim.get_text()]. */
 final class LuaEngine
 {
   final KeyEventHandler _handler;
-  final File _lua_dir;
+  File _lua_dir;
   final Globals _globals;
   final Map<String, LuaValue> _commands = new HashMap<String, LuaValue>();
 
   LuaEngine(KeyEventHandler handler, Context appCtx)
   {
-    this(handler, new File(appCtx.getApplicationContext().getFilesDir(), "lua"));
+    this(handler, pick_lua_dir(handler, appCtx));
+  }
+
+  /** Directory of the Lua scripts in the user visible storage, or the app
+      private directory when the user storage is not accessible. */
+  static File pick_lua_dir(KeyEventHandler handler, Context appCtx)
+  {
+    File user = user_lua_dir();
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+        && !Environment.isExternalStorageManager())
+    {
+      flash_no_access(handler);
+      return new File(appCtx.getApplicationContext().getFilesDir(), "lua");
+    }
+    if (!ensure_user_lua_dir())
+      return new File(appCtx.getApplicationContext().getFilesDir(), "lua");
+    return user;
+  }
+
+  /** [Storage]/keyboard-lua: the scripts folder of the user visible storage. */
+  static File user_lua_dir()
+  {
+    return new File(Environment.getExternalStorageDirectory(), "keyboard-lua");
+  }
+
+  static void flash_no_access(KeyEventHandler handler)
+  {
+    if (handler != null)
+      handler._vim.flash_status("grant All files access to use /sdcard/keyboard-lua",
+          VimEngine.STATUS_COLOR_CMD);
+  }
+
+  /** Create the scripts folder of the user storage if it does not exist yet.
+      Requires All files access on Android 11+; silently fails otherwise. */
+  static boolean ensure_user_lua_dir()
+  {
+    File dir = user_lua_dir();
+    return dir.isDirectory() || dir.mkdirs();
   }
 
   LuaEngine(KeyEventHandler handler, File luaDir)
@@ -68,17 +116,42 @@ final class LuaEngine
   }
 
   /** Reload every script in the lua directory. The previously registered
-      commands are cleared. */
+      commands are cleared. When All files access has been granted since the
+      engine was created, switch to the user storage directory. */
   void reload()
   {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+        && Environment.isExternalStorageManager()
+        && !_lua_dir.equals(user_lua_dir()))
+    {
+      _lua_dir = user_lua_dir();
+      ensure_user_lua_dir();
+    }
     _commands.clear();
-    File[] files = _lua_dir.listFiles();
+    List<File> files = new ArrayList<File>();
+    add_files(files, _lua_dir);
+    add_files(files, new File(_lua_dir, "plugins"));
+    Collections.sort(files);
+    for (File f : files)
+      load_script(f);
+  }
+
+  /** Append the [.lua] script files of [dir] (when it exists) to [out]. */
+  static void add_files(List<File> out, File dir)
+  {
+    File[] files = (dir == null) ? null : dir.listFiles();
     if (files == null)
       return;
     Arrays.sort(files);
     for (File f : files)
       if (f.isFile() && f.getName().endsWith(".lua"))
-        load_script(f);
+        out.add(f);
+  }
+
+  /** Path of the directory the scripts are loaded from. */
+  String current_dir()
+  {
+    return _lua_dir.getPath();
   }
 
   void load_script(File file)
@@ -102,24 +175,47 @@ final class LuaEngine
       {
         in.close();
       }
-      run_chunk(data, file.getName());
+      LuaValue chunk = _globals.load(new ByteArrayInputStream(data),
+          file.getName(), "t", _globals);
+      chunk.call();
+      String name = command_name_of_file(file.getName());
+      if (!name.isEmpty() && !_commands.containsKey(name))
+        _commands.put(name, new ScriptCommand(chunk));
     }
     catch (IOException ex)
     {
       flash("lua: cannot read " + file.getName());
     }
-  }
-
-  void run_chunk(byte[] data, String name)
-  {
-    try
-    {
-      InputStream in = new ByteArrayInputStream(data);
-      _globals.load(in, name, "t", _globals).call();
-    }
     catch (Exception ex)
     {
       flash("lua: " + ex.getMessage());
+    }
+  }
+
+  /** The command name of a script file: its file name without the [.lua]
+      extension, lowercased. */
+  static String command_name_of_file(String fileName)
+  {
+    String name = fileName;
+    if (name.toLowerCase(Locale.ROOT).endsWith(".lua"))
+      name = name.substring(0, name.length() - 4);
+    return name.toLowerCase(Locale.ROOT);
+  }
+
+  /** A command that re-runs the script chunk with the command line arguments
+      as the Lua vararg [...]. */
+  static final class ScriptCommand extends VarArgFunction
+  {
+    final LuaValue _chunk;
+
+    ScriptCommand(LuaValue chunk)
+    {
+      _chunk = chunk;
+    }
+
+    @Override public Varargs invoke(Varargs args)
+    {
+      return _chunk.invoke(args);
     }
   }
 
@@ -305,6 +401,12 @@ final class LuaEngine
     vim.set("status", new OneArgFunction() {
       @Override public LuaValue call(LuaValue s) {
         flash(s.tojstring());
+        return LuaValue.NONE;
+      }
+    });
+    vim.set("page", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue s) {
+        _handler.open_page("out", s.tojstring());
         return LuaValue.NONE;
       }
     });

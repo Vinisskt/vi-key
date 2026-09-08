@@ -143,6 +143,35 @@ public class KeyValueParserTest
     // Char
     Utils.parse(":char symbol='a':b", KeyValue.makeCharKey('b', "a", 0));
     Utils.parse(":char:b", KeyValue.makeCharKey('b', "b", 0));
+    // Keyevent (old syntax)
+    Utils.parse(":keyevent:85", KeyValue.keyeventKey("85", 85, 0));
+    Utils.parse(":keyevent symbol='Esc':85",
+        KeyValue.keyeventKey("Esc", 85, 0));
+    Utils.parse(":keyevent flags='dim':85",
+        KeyValue.keyeventKey("85", 85, KeyValue.FLAG_SECONDARY));
+    Utils.parse(":str symbol='a' flags='dim,small':'x'",
+        str("x").withSymbol("a").withFlags(KeyValue.FLAG_SECONDARY));
+    // Errors
+    Utils.expect_error(":"); // No kind
+    Utils.expect_error("::"); // No kind
+    Utils.expect_error(":char:ab"); // Multi-char payload
+    Utils.expect_error(":keyevent:8a"); // Non-integer payload
+    Utils.expect_error(":str foo='bar':'x'"); // Unknown attribute
+    Utils.expect_error(":str flags='foo':'x'"); // Unknown flag
+  }
+
+  @Test
+  public void parse_named_keys() throws Exception
+  {
+    Utils.parse("symbol:shift",
+        KeyValue.getSpecialKeyByName("shift").withSymbol("symbol"));
+    Utils.parse("symbol:keyevent:1,keyevent:2",
+        KeyValue.makeMacro("symbol", new KeyValue[]{
+          KeyValue.keyeventKey("", 1, 0),
+          KeyValue.keyeventKey("", 2, 0)
+        }, 0));
+    Utils.expect_error("symbol:,");
+    Utils.expect_error("symbol:a'");
   }
 
   /** JUnit removes these functions from stacktraces. */

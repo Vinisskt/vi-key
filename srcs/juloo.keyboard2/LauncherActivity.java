@@ -26,6 +26,7 @@ public class LauncherActivity extends Activity
   {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.launcher_activity);
+    LuaEngine.ensure_user_lua_dir();
     _tryhere_text = (TextView)findViewById(R.id.launcher_tryhere_text);
     _tryhere_area = (EditText)findViewById(R.id.launcher_tryhere_area);
     if (VERSION.SDK_INT >= 28)

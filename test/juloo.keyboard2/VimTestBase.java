@@ -37,6 +37,13 @@ public abstract class VimTestBase
     _handler.key_up(TestUtils.key(name), Pointers.Modifiers.EMPTY);
   }
 
+  /** Exit INSERT mode: [ctrl]+[esc]. A plain [esc] is passed to the app
+      (Termux, nvim...), so it does not switch modes. */
+  protected void press_escape()
+  {
+    press_with_mods("esc", Pointers.Modifiers.EMPTY.with_extra_mod(TestUtils.key("ctrl")));
+  }
+
   protected void press_char(char c)
   {
     press(Character.toString(c));
