@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.content.Context;
 import android.content.Intent;
@@ -27,13 +27,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import juloo.cdict.Cdict;
-import juloo.keyboard2.dict.Dictionaries;
-import juloo.keyboard2.dict.DictionariesActivity;
-import juloo.keyboard2.dict.DictionarySwitcher;
-import juloo.keyboard2.dict.SupportedDictionaries;
-import juloo.keyboard2.prefs.LayoutsPreference;
-import juloo.keyboard2.suggestions.CandidatesView;
-import juloo.keyboard2.suggestions.Suggestions;
+import com.vinisskt.vikey.dict.Dictionaries;
+import com.vinisskt.vikey.dict.DictionariesActivity;
+import com.vinisskt.vikey.dict.DictionarySwitcher;
+import com.vinisskt.vikey.dict.SupportedDictionaries;
+import com.vinisskt.vikey.prefs.LayoutsPreference;
+import com.vinisskt.vikey.suggestions.CandidatesView;
+import com.vinisskt.vikey.suggestions.Suggestions;
 
 public class Keyboard2 extends InputMethodService
   implements SharedPreferences.OnSharedPreferenceChangeListener

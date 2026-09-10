@@ -1,12 +1,12 @@
-package juloo.keyboard2.suggestions;
+package com.vinisskt.vikey.suggestions;
 
 import java.util.Arrays;
 import java.util.List;
 import juloo.cdict.Cdict;
-import juloo.keyboard2.dict.Dictionaries;
-import juloo.keyboard2.Config;
-import juloo.keyboard2.ComposeKey;
-import juloo.keyboard2.ComposeKeyData;
+import com.vinisskt.vikey.dict.Dictionaries;
+import com.vinisskt.vikey.Config;
+import com.vinisskt.vikey.ComposeKey;
+import com.vinisskt.vikey.ComposeKeyData;
 
 /** Keep track of the word being typed and provide suggestions for
     [CandidatesView]. */

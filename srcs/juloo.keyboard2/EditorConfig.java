@@ -1,11 +1,11 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.content.res.Resources;
 import android.os.Build.VERSION;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.view.inputmethod.EditorInfo;
-import juloo.keyboard2.suggestions.CandidatesView;
+import com.vinisskt.vikey.suggestions.CandidatesView;
 
 public final class EditorConfig
 {

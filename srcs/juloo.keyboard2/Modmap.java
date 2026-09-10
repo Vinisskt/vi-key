@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import java.lang.reflect.Array;
 import java.util.Map;

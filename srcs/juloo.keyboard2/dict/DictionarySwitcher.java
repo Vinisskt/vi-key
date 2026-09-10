@@ -1,4 +1,4 @@
-package juloo.keyboard2.dict;
+package com.vinisskt.vikey.dict;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -6,7 +6,7 @@ import android.inputmethodservice.InputMethodService;
 import android.widget.ArrayAdapter;
 import java.util.ArrayList;
 import java.util.List;
-import juloo.keyboard2.*;
+import com.vinisskt.vikey.*;
 
 public final class DictionarySwitcher
 {

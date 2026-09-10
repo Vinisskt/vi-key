@@ -17,15 +17,15 @@ dependencies {
 }
 
 android {
-  namespace = "juloo.keyboard2"
+  namespace = "com.vinisskt.vikey"
   compileSdkVersion = "android-36"
 
   defaultConfig {
-    applicationId = "juloo.keyboard2"
+    applicationId = "com.vinisskt.vikey"
     minSdk = 21
     targetSdk { version = release(36) }
-    versionCode = 74
-    versionName = "vi_key-18"
+    versionCode = 1
+    versionName = "1.0.0-vi"
     resConfigs("en", "pt")
   }
 

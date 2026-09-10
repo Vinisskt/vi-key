@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.view.inputmethod.InputConnection;
 import java.lang.reflect.Proxy;
@@ -251,7 +251,7 @@ public class SearchBarTest
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
     @Override public void open_page(String title, String html) {}
-    @Override public void set_suggestions(juloo.keyboard2.suggestions.Suggestions s) {}
+    @Override public void set_suggestions(com.vinisskt.vikey.suggestions.Suggestions s) {}
   }
 
   /** A receiver whose connection reports no extracted text. */
@@ -280,6 +280,6 @@ public class SearchBarTest
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
     @Override public void open_page(String title, String html) {}
-    @Override public void set_suggestions(juloo.keyboard2.suggestions.Suggestions s) {}
+    @Override public void set_suggestions(com.vinisskt.vikey.suggestions.Suggestions s) {}
   }
 }

@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import java.util.TreeMap;
 import org.junit.Test;

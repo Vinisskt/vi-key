@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.view.KeyEvent;
 import android.view.inputmethod.ExtractedText;

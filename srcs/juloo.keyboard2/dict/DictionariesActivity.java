@@ -1,8 +1,8 @@
-package juloo.keyboard2.dict;
+package com.vinisskt.vikey.dict;
 
 import android.app.Activity;
 import android.os.Bundle;
-import juloo.keyboard2.R;
+import com.vinisskt.vikey.R;
 
 public class DictionariesActivity extends Activity
 {

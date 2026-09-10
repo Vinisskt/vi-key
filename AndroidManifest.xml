@@ -9,29 +9,29 @@
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
 
   <application android:label="@string/app_name" android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:hardwareAccelerated="false">
-    <service android:name="juloo.keyboard2.Keyboard2" android:label="@string/app_name" android:permission="android.permission.BIND_INPUT_METHOD" android:exported="true" android:directBootAware="true">
+    <service android:name="com.vinisskt.vikey.Keyboard2" android:label="@string/app_name" android:permission="android.permission.BIND_INPUT_METHOD" android:exported="true" android:directBootAware="true">
       <intent-filter>
         <action android:name="android.view.InputMethod"/>
       </intent-filter>
       <meta-data android:name="android.view.im" android:resource="@xml/method"/>
     </service>
 
-    <activity android:name="juloo.keyboard2.SettingsActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/settingsTheme" android:exported="true" android:directBootAware="true">
+    <activity android:name="com.vinisskt.vikey.SettingsActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/settingsTheme" android:exported="true" android:directBootAware="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
       </intent-filter>
     </activity>
 
-    <activity android:name="juloo.keyboard2.LauncherActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/appTheme" android:exported="true" android:directBootAware="true">
+    <activity android:name="com.vinisskt.vikey.LauncherActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/appTheme" android:exported="true" android:directBootAware="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
 
-    <activity android:name="juloo.keyboard2.BrowserActivity" android:exported="false" android:hardwareAccelerated="true" android:excludeFromRecents="true" android:theme="@style/browserTheme" android:windowSoftInputMode="stateVisible|adjustResize"/>
+    <activity android:name="com.vinisskt.vikey.BrowserActivity" android:exported="false" android:hardwareAccelerated="true" android:excludeFromRecents="true" android:theme="@style/browserTheme" android:windowSoftInputMode="stateVisible|adjustResize"/>
 
-    <activity android:name="juloo.keyboard2.dict.DictionariesActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/appTheme" android:exported="true" android:directBootAware="true">
+    <activity android:name="com.vinisskt.vikey.dict.DictionariesActivity" android:icon="@mipmap/ic_launcher" android:theme="@style/appTheme" android:exported="true" android:directBootAware="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
       </intent-filter>

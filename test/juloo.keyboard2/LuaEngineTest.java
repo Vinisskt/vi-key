@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -303,7 +303,7 @@ public class LuaEngineTest extends VimTestBase
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
     @Override public void open_page(String title, String html) {}
-    @Override public void set_suggestions(juloo.keyboard2.suggestions.Suggestions s) {}
+    @Override public void set_suggestions(com.vinisskt.vikey.suggestions.Suggestions s) {}
     String lastStatus() { return statuses.isEmpty() ? null : statuses.get(statuses.size() - 1); }
   }
 

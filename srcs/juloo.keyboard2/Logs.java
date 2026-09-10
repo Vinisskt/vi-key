@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.text.InputType;
 import android.util.Log;
@@ -8,7 +8,7 @@ import org.json.JSONException;
 
 public final class Logs
 {
-  static final String TAG = "juloo.keyboard2";
+  static final String TAG = "com.vinisskt.vikey";
 
   static LogPrinter _debug_logs = null;
 

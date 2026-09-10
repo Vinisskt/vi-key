@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.content.Context;
 import android.os.Handler;
@@ -43,7 +43,7 @@ public final class FakeReceiver implements KeyEventHandler.IReceiver
   @Override public void open_page(String title, String html)
   { pages.add(title + "\u0000" + html); }
 
-  @Override public void set_suggestions(juloo.keyboard2.suggestions.Suggestions suggestions)
+  @Override public void set_suggestions(com.vinisskt.vikey.suggestions.Suggestions suggestions)
   { suggestionsUpdated = true; }
 
   public String lastStatus() { return vimStatuses.isEmpty() ? null : vimStatuses.get(vimStatuses.size() - 1); }

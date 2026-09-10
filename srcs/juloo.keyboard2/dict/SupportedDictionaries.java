@@ -1,8 +1,8 @@
-package juloo.keyboard2.dict;
+package com.vinisskt.vikey.dict;
 
 import android.content.res.Resources;
 import java.util.Arrays;
-import juloo.keyboard2.R;
+import com.vinisskt.vikey.R;
 
 /** Access arrays in [dictionaries.xml]. */
 public class SupportedDictionaries

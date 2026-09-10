@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -12,8 +12,8 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
-import juloo.keyboard2.dict.DictionariesActivity;
-import juloo.keyboard2.R;
+import com.vinisskt.vikey.dict.DictionariesActivity;
+import com.vinisskt.vikey.R;
 
 public class LauncherActivity extends Activity
 {

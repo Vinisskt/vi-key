@@ -1,11 +1,11 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.view.KeyEvent;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import static juloo.keyboard2.TestUtils.*;
+import static com.vinisskt.vikey.TestUtils.*;
 import static org.junit.Assert.*;
 
 public class KeyModifierTest

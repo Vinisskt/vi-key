@@ -1,4 +1,4 @@
-package juloo.keyboard2.dict;
+package com.vinisskt.vikey.dict;
 
 import android.content.Context;
 import android.util.AttributeSet;
@@ -18,10 +18,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.zip.GZIPInputStream;
 import juloo.cdict.Cdict;
-import juloo.keyboard2.DeviceLocales;
-import juloo.keyboard2.Logs;
-import juloo.keyboard2.R;
-import juloo.keyboard2.Utils;
+import com.vinisskt.vikey.DeviceLocales;
+import com.vinisskt.vikey.Logs;
+import com.vinisskt.vikey.R;
+import com.vinisskt.vikey.Utils;
 
 public class DictionaryListView extends LinearLayout
 {

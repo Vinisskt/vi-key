@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
@@ -9,10 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import juloo.cdict.Cdict;
-import juloo.keyboard2.dict.Dictionaries;
-import juloo.keyboard2.prefs.CustomExtraKeysPreference;
-import juloo.keyboard2.prefs.ExtraKeysPreference;
-import juloo.keyboard2.prefs.LayoutsPreference;
+import com.vinisskt.vikey.dict.Dictionaries;
+import com.vinisskt.vikey.prefs.CustomExtraKeysPreference;
+import com.vinisskt.vikey.prefs.ExtraKeysPreference;
+import com.vinisskt.vikey.prefs.LayoutsPreference;
 
 public final class Config
 {

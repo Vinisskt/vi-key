@@ -30,8 +30,6 @@ latn_qwertz_cz_multifunctional: Layout includes some ASCII punctuation but not a
 latn_qwertz_sk: Layout includes some ASCII punctuation but not all, missing: `
 latn_qzerty_it: Layout includes some ASCII punctuation but not all, missing: #, $, \, `, ~
 urdu_phonetic_ur: Layout includes some ASCII punctuation but not all, missing: <, >, ?, `, |, ~
-vim_prog: Duplicate keys: &, *, /
-vim_prog: Layout includes some ASCII punctuation but not all, missing: ], }
 vim_prog: Missing important key, missing: loc capslock
 vim_prog: Missing programming keys, missing: loc esc, loc tab
 vim_prog: Layout redefines the bottom row but some important keys are missing, missing: action, config, fn, loc alt, loc change_method, loc compose, loc end, loc home, loc page_down, loc page_up, loc voice_typing, switch_emoji

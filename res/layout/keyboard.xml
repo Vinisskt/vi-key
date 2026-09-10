@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:hardwareAccelerated="false" android:orientation="vertical" android:background="?attr/colorKeyboard">
-  <juloo.keyboard2.suggestions.CandidatesView android:id="@+id/candidates_view" style="@style/candidates_view">
+  <com.vinisskt.vikey.suggestions.CandidatesView android:id="@+id/candidates_view" style="@style/candidates_view">
     <TextView android:id="@+id/candidates_emoji" style="@style/candidates_emoji"/>
     <TextView android:id="@+id/candidates_left" style="@style/candidates_item"/>
     <TextView android:id="@+id/candidates_middle" style="@style/candidates_item"/>
     <TextView android:id="@+id/candidates_right" style="@style/candidates_item"/>
     <TextView android:id="@+id/candidates_lang_name" style="@style/candidates_lang_name"/>
     <Button android:id="@+id/dictionary_switch" style="@style/change_dictionary"/>
-  </juloo.keyboard2.suggestions.CandidatesView>
+  </com.vinisskt.vikey.suggestions.CandidatesView>
   <TextView android:id="@+id/vim_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp" android:textStyle="bold" android:fontFamily="@font/cascadia_mono" android:gravity="center_vertical" android:paddingStart="16dp" android:paddingEnd="16dp" android:letterSpacing="0.08" android:background="?attr/colorKeyAction" android:textColor="#1d2021" android:text="" android:visibility="gone" android:minHeight="22dp"/>
-  <juloo.keyboard2.Keyboard2View android:id="@+id/keyboard_view" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+  <com.vinisskt.vikey.Keyboard2View android:id="@+id/keyboard_view" android:layout_width="match_parent" android:layout_height="wrap_content"/>
 </LinearLayout>

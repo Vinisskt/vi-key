@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.annotation.SuppressLint;
 import android.content.ClipData;
@@ -16,7 +16,7 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
-import juloo.keyboard2.suggestions.Suggestions;
+import com.vinisskt.vikey.suggestions.Suggestions;
 
 public final class KeyEventHandler
   implements Config.IKeyEventHandler,

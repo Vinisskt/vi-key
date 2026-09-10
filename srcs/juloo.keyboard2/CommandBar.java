@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 /** Command mode used in VIM mode (the ':' command line).
     Typing ':' starts a command: characters are appended to the command line,

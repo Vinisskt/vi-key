@@ -1,4 +1,4 @@
-package juloo.keyboard2.dict;
+package com.vinisskt.vikey.dict;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -13,10 +13,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import juloo.cdict.Cdict;
-import juloo.keyboard2.Config;
-import juloo.keyboard2.DirectBootAwarePreferences;
-import juloo.keyboard2.Logs;
-import juloo.keyboard2.Utils;
+import com.vinisskt.vikey.Config;
+import com.vinisskt.vikey.DirectBootAwarePreferences;
+import com.vinisskt.vikey.Logs;
+import com.vinisskt.vikey.Utils;
 
 /** Manage and load installed dictionaries. */
 public final class Dictionaries

@@ -1,4 +1,4 @@
-package juloo.keyboard2.suggestions;
+package com.vinisskt.vikey.suggestions;
 
 import android.content.Context;
 import android.os.Build.VERSION;
@@ -13,10 +13,10 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import juloo.keyboard2.Config;
-import juloo.keyboard2.KeyValue;
-import juloo.keyboard2.Pointers;
-import juloo.keyboard2.R;
+import com.vinisskt.vikey.Config;
+import com.vinisskt.vikey.KeyValue;
+import com.vinisskt.vikey.Pointers;
+import com.vinisskt.vikey.R;
 
 public class CandidatesView extends LinearLayout
 {

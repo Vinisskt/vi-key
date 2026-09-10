@@ -1,10 +1,10 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
-import juloo.keyboard2.ComposeKey;
-import juloo.keyboard2.ComposeKeyData;
-import juloo.keyboard2.KeyValue;
+import com.vinisskt.vikey.ComposeKey;
+import com.vinisskt.vikey.ComposeKeyData;
+import com.vinisskt.vikey.KeyValue;
 import org.junit.Test;
-import static juloo.keyboard2.TestUtils.*;
+import static com.vinisskt.vikey.TestUtils.*;
 import static org.junit.Assert.*;
 
 public class ComposeKeyTest
