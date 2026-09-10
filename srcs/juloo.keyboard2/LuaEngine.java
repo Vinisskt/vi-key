@@ -59,6 +59,8 @@ import org.luaj.vm2.lib.jse.JsePlatform;
         fast (short file reads, updates); it runs on the keyboard main thread.
       - [vim.clear_interval(handle)]: cancel a timer created by
         [vim.interval].
+      - [vim.set_mode(mode)]: switch the keyboard mode ("insert", "normal",
+        "scroll"); "scroll" sends DPAD events for j/k, useful to scroll lists.
     Positions are relative to the beginning of the text returned by
     [vim.get_text()]. */
 final class LuaEngine
@@ -441,6 +443,23 @@ final class LuaEngine
     vim.set("page", new OneArgFunction() {
       @Override public LuaValue call(LuaValue s) {
         _handler.open_page("out", s.tojstring());
+        return LuaValue.NONE;
+      }
+    });
+    vim.set("set_mode", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue arg) {
+        String mode = arg.tojstring();
+        int m;
+        switch (mode) {
+          case "insert": m = VimEngine.MODE_INSERT; break;
+          case "normal": m = VimEngine.MODE_NORMAL; break;
+          case "scroll": m = VimEngine.MODE_SCROLL; break;
+          default:
+            _handler._vim.flash_status("modo: " + mode + " (use insert/normal/scroll)",
+                VimEngine.STATUS_COLOR_CMD);
+            return LuaValue.NONE;
+        }
+        _handler._vim.set_mode(m);
         return LuaValue.NONE;
       }
     });

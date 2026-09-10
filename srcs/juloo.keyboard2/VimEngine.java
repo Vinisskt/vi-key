@@ -23,6 +23,7 @@ public final class VimEngine
   public static final int MODE_NORMAL = 1;
   public static final int MODE_SEARCH = 2;
   public static final int MODE_CMD = 3;
+  public static final int MODE_SCROLL = 4;
 
   private static final long JK_DELAY_MS = 300;
 
@@ -160,7 +161,7 @@ public final class VimEngine
 
   boolean on_enter()
   {
-    if (_mode == MODE_NORMAL)
+    if (_mode == MODE_NORMAL || _mode == MODE_SCROLL)
     {
       _move_j(1);
       return true;
@@ -195,6 +196,11 @@ public final class VimEngine
       set_mode(MODE_NORMAL);
       return true;
     }
+    if (_mode == MODE_SCROLL)
+    {
+      set_mode(MODE_INSERT);
+      return true;
+    }
     return true;
   }
 
@@ -218,12 +224,12 @@ public final class VimEngine
         default: return false;
       }
     }
-    if (_mode == MODE_NORMAL)
+    if (_mode == MODE_NORMAL || _mode == MODE_SCROLL)
     {
       switch (ev)
       {
         case BACKSPACE: delete_forward(1); return true;
-        case SPACE_BAR: return true; // Consume the space bar in normal mode
+        case SPACE_BAR: return true; // Consume the space bar in normal/scroll mode
         default: return false;
       }
     }
@@ -375,6 +381,7 @@ public final class VimEngine
     {
       case MODE_INSERT: text = "INSERT"; color = STATUS_COLOR_INSERT; break;
       case MODE_NORMAL: text = "NORMAL"; color = STATUS_COLOR_NORMAL; break;
+      case MODE_SCROLL: text = "SCROLL"; color = STATUS_COLOR_NORMAL; break;
       case MODE_CMD: text = ":" + _cmd.command(); color = STATUS_COLOR_CMD; break;
       default:
         text = "/" + _search.query();
