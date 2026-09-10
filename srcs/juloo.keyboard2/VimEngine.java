@@ -10,7 +10,8 @@ import android.view.inputmethod.InputConnection;
     them to a search query.
     Only the main Vim commands are implemented: [hjkl] movement, [wbe] word
     motions, [0$] line start/end, [ggG] document start/end, [dd], [dw], [de],
-    [x], undo with [u], redo with ctrl+r, [i] to switch back to insert mode,
+    [x], undo with [u], redo with ctrl+r, [i] to switch back to insert mode
+    before the cursor and [a] to append after it,
     [o] to open a new line below and [O] to open one above, [/?] search forward
     and backward ([/] searches, [?] opens the built-in help),
     and [jk] or [ctrl]+escape to switch back to normal mode. Counts are
@@ -284,6 +285,7 @@ public final class VimEngine
     switch (c)
     {
       case 'i': _clear_count(); set_mode(MODE_INSERT); return true;
+      case 'a': _clear_count(); _move_l(1); set_mode(MODE_INSERT); return true;
       case 'o': open_line_below(); return true;
       case 'O': open_line_above(); return true;
       case 'h': _move_h(count()); _clear_count(); return true;
@@ -355,12 +357,14 @@ public final class VimEngine
 
   /** Display a transient message in the status bar (used to report the result
       of a command while the keyboard is in normal mode). */
+  private static final int STATUS_DURATION_MS = 4000;
+
   void flash_status(String text, int color)
   {
     _handler._recv.set_vim_status(text, color);
     _handler.get_handler().postDelayed(new Runnable() {
       public void run() { update_status(); }
-    }, 1600);
+    }, STATUS_DURATION_MS);
   }
 
   void update_status()

@@ -419,7 +419,7 @@ public final class Pointers implements Handler.Callback
   /** Time, in ms, for the quick-tap symbol long-press. Special characters are
       typed by holding longer than a plain long-press, so a quick hold or a
       long-press still behaves as before. */
-  private static final long QUICK_TAP_LONG_PRESS_TIMEOUT_MS = 250;
+  private static final long QUICK_TAP_LONG_PRESS_TIMEOUT_MS = 200;
 
   private void startLongPress(Pointer ptr)
   {

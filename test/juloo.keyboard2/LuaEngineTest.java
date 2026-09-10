@@ -107,6 +107,59 @@ public class LuaEngineTest extends VimTestBase
     assertArrayEquals(new String[] { "extra", "plug", "root" }, lua.command_names());
   }
 
+  void write_nested_script(String subpath, String content)
+  {
+    try
+    {
+      File f = new File(dir, subpath);
+      f.getParentFile().mkdirs();
+      java.io.FileOutputStream out = new java.io.FileOutputStream(f);
+      out.write(content.getBytes("UTF-8"));
+      out.close();
+    }
+    catch (Exception e)
+    {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Test
+  public void init_lua_requires_plugins_instead_of_loading_flat_files()
+  {
+    new_engine();
+    write_script("init.lua",
+        "require('mod')\n");
+    write_script("unrelated.lua",
+        "vim.register('flat', function() end)");
+    write_nested_script("plugins/mod.lua",
+        "vim.register('mod', function(args) vim.status('mod ' .. args) end)");
+    lua.reload();
+    // Only the commands registered by the required modules exist; unrelated.lua
+    // (flat, non-required) must not be loaded and "init" is not a command.
+    assertArrayEquals(new String[] { "mod" }, lua.command_names());
+    assertTrue(lua.execute("mod", "ok"));
+    assertTrue(_receiver.lastStatus().startsWith("mod ok"));
+  }
+
+  @Test
+  public void interval_and_clear_interval_wired_through_commands()
+  {
+    new_engine();
+    write_script("ivl.lua",
+        "handle = nil\n" +
+        "vim.register('mk', function()\n" +
+        "  handle = vim.interval(1000, function() end)\n" +
+        "end)\n" +
+        "vim.register('stop_ivl', function() vim.clear_interval(handle) end)\n");
+    lua.reload();
+    // Creating and cancelling an interval through the Lua API must not error.
+    assertTrue(lua.execute("mk", ""));
+    assertTrue(lua.execute("stop_ivl", ""));
+    // A reload with live timers cancels them without error.
+    assertTrue(lua.execute("mk", ""));
+    lua.reload();
+  }
+
   @Test
   public void get_text_exposed_to_scripts()
   {

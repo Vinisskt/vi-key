@@ -929,24 +929,42 @@ public final class KeyEventHandler
   {
     StringBuilder b = new StringBuilder();
     b.append(vim_page_head());
-    b.append("<h1>:help lua &mdash; scripts</h1>");
+    b.append("<h1>:help lua &mdash; scripts e plugins</h1>");
     b.append("<p class=\"dim\">Os scripts s&atilde;o executados dentro do teclado; " +
-        "n&atilde;o dependem do Termux (que &eacute; opcional).</p><hr>");
+        "n&atilde;o dependem do Termux. Plugins que usam ferramentas Linux passam pelo " +
+        "<kbd>:termux</kbd> (veja <kbd>:help termux</kbd>).</p><hr>");
 
-    b.append("<h2>Onde ficam os scripts</h2>");
-    b.append("<p>Pasta <kbd>/sdcard/keyboard-lua</kbd> (+ subpasta <kbd>plugins</kbd>). " +
+    b.append("<h2>Onde ficam os plugins</h2>");
+    b.append("<p>Pasta <kbd>/sdcard/keyboard-lua</kbd>: o <kbd>init.lua</kbd> na raiz &eacute; o " +
+        "ponto de entrada e os m&oacute;dulos ficam na subpasta <kbd>plugins/</kbd>. " +
         "<b>Essa pasta &eacute; do usu&aacute;rio</b> &mdash; em novas instala&ccedil;&otilde;es ela est&aacute; vazia. " +
         "No Android 11+ isso usa a permiss&atilde;o &ldquo;acesso a todos os arquivos&rdquo;; sem ela " +
         "os scripts ficam na pasta privada do aplicativo e o teclado avisa na barra de status.</p>");
 
-    b.append("<h2>Carregar e gerenciar</h2>");
-    b.append("<p><kbd>:reload</kbd> recarrega os scripts &middot; <kbd>:ls</kbd> lista os comandos " +
+    b.append("<h2><kbd>init.lua</kbd>: ponto de entrada</h2>");
+    b.append("<p>Se existe um <kbd>init.lua</kbd> na raiz, o teclado o carrega (no in&iacute;cio e " +
+        "a cada <kbd>:reload</kbd>) e ele carrega os plugins com <kbd>require()</kbd>:</p>");
+    b.append("<pre>require(\"termux\")\n" +
+        "require(\"ipc-loop\")</pre>");
+    b.append("<p><kbd>require(\"nome\")</kbd> procura <kbd>keyboard-lua/nome.lua</kbd> e " +
+        "<kbd>keyboard-lua/plugins/nome.lua</kbd> (o <kbd>package.path</kbd> &eacute; estendido " +
+        "pelo teclado). Cada plugin &eacute; um m&oacute;dulo Lua comum que registra seus comandos " +
+        "com <kbd>vim.register</kbd> e retorna a tabela do m&oacute;dulo. O <kbd>:reload</kbd> " +
+        "re-executa o <kbd>init.lua</kbd> e re-require os m&oacute;dulos.</p>");
+
+    b.append("<h2>Compatibilidade</h2>");
+    b.append("<p>Sem <kbd>init.lua</kbd>, o modo antigo continua: cada arquivo <kbd>.lua</kbd> " +
+        "da raiz ou de <kbd>plugins/</kbd> vira um comando <kbd>:&lt;nome&gt;</kbd> (nome sem " +
+        "extens&atilde;o). Um <kbd>vim.register(&quot;nome&quot;, fun&ccedil;&atilde;o)</kbd> tem " +
+        "preced&ecirc;ncia sobre o nome do arquivo.</p>");
+
+    b.append("<h2>Gerenciar</h2>");
+    b.append("<p><kbd>:reload</kbd> recarrega os plugins &middot; <kbd>:ls</kbd> lista os comandos " +
         "(o <kbd>:ls help</kbd> mostra as p&aacute;ginas de ajuda).</p>");
-    b.append("<p><kbd>:addlua &lt;nome&gt;</kbd> salva o conteúdo do clipboard como um script; " +
-        "<kbd>:rmlua &lt;nome&gt;</kbd> remove um script.</p>");
-    b.append("<p>Cada arquivo <kbd>.lua</kbd> vira um comando <kbd>:&lt;nome&gt;</kbd> (nome sem " +
-        "a extens&atilde;o). Um <kbd>vim.register(&quot;nome&quot;, fun&ccedil;&atilde;o)</kbd> dentro do " +
-        "arquivo tem preced&ecirc;ncia sobre o nome do arquivo.</p>");
+    b.append("<p><kbd>:addlua &lt;nome&gt;</kbd> salva o conteúdo do clipboard como <kbd>nome.lua</kbd> " +
+        "na raiz &middot; <kbd>:rmlua &lt;nome&gt;</kbd> remove um script.</p>");
+    b.append("<p class=\"dim\">Com <kbd>init.lua</kbd> presente, um arquivo salvo com " +
+        "<kbd>:addlua</kbd> s&oacute; &eacute; carregado se for <kbd>require()</kbd>-ado por ele.</p>");
 
     b.append("<h2>API <kbd>vim.*</kbd></h2>");
     String[][] api = {
@@ -960,18 +978,25 @@ public final class KeyEventHandler
       {"clipboard()", "conte&uacute;do atual do clipboard"},
       {"status(msg)", "mensagem r&aacute;pida na barra de status"},
       {"page(texto)", "abre/sobrescreve uma p&aacute;gina estilo a de ajuda com o texto"},
+      {"interval(ms, fn)", "chama fn a cada ms (ass&iacute;ncrono, sem travar); retorna o id"},
+      {"clear_interval(id)", "cancela um intervalo criado por vim.interval"},
     };
     for (String[] a : api)
       b.append("<p><kbd>vim.").append(a[0]).append("</kbd> &mdash; ").append(a[1]).append("</p>");
     b.append("<p class=\"dim\">Posi&ccedil;&otilde;es de <kbd>get_sel</kbd>/<kbd>set_sel</kbd>/" +
         "<kbd>replace</kbd> s&atilde;o relativas ao in&iacute;cio do texto de <kbd>get_text</kbd>.</p>");
 
-    b.append("<h2>Exemplo</h2>");
-    b.append("<pre>vim.register(\"ola\", function()\n" +
-        "  vim.status(\"olá \" .. vim.clipboard())\n" +
-        "end)\n</pre>");
-    b.append("<p>Salve como <kbd>ola.lua</kbd>, rode <kbd>:reload</kbd> e use <kbd>:ola</kbd>. " +
-        "Veja tamb&eacute;m <kbd>:help termux</kbd> para plugins que rodam comandos externos.</p>");
+    b.append("<h2>Exemplo: um plugin simples</h2>");
+    b.append("<p>Salve <kbd>plugins/ola.lua</kbd>:</p>");
+    b.append("<pre>local M = {}\n" +
+        "function M.run()\n" +
+        "  vim.status(\"ol\u00e1 \" .. vim.clipboard())\n" +
+        "end\n" +
+        "vim.register(\"ola\", function(...) M.run(...) end)\n" +
+        "return M</pre>");
+    b.append("<p>No <kbd>init.lua</kbd> adicione <kbd>require(\"ola\")</kbd>, rode " +
+        "<kbd>:reload</kbd> e use <kbd>:ola</kbd>. Veja tamb&eacute;m <kbd>:help termux</kbd> " +
+        "para plugins que rodam comandos externos.</p>");
     b.append(vim_page_foot());
     return b.toString();
   }
@@ -982,93 +1007,69 @@ public final class KeyEventHandler
     StringBuilder b = new StringBuilder();
     b.append(vim_page_head());
     b.append("<h1>:help termux &mdash; conectar ao Termux</h1>");
-    b.append("<p class=\"dim\">A pasta <kbd>/sdcard/keyboard-lua</kbd> &eacute; do <b>usu&aacute;rio</b>, n&atilde;o do aplicativo. " +
-        "Em novas instala&ccedil;&otilde;es ela est&aacute; vazia. Voc&ecirc; cria os arquivos abaixo.</p><hr>");
+    b.append("<p class=\"dim\">O plugin <kbd>termux</kbd> &eacute; a porta do teclado para as " +
+        "ferramentas Linux: <kbd>:termux &lt;comando&gt;</kbd> executa no Termux e mostra a " +
+        "sa&iacute;da na hora; <kbd>:termux</kbd> sem argumento (ou <kbd>:-></kbd>) mostra a " +
+        "&uacute;ltima sa&iacute;da; <kbd>:$</kbd> &eacute; atalho de <kbd>:termux</kbd>. Os plugins " +
+        "(<kbd>termux</kbd>, <kbd>ipc-loop</kbd>) vivem em <kbd>/sdcard/keyboard-lua</kbd>. O teclado " +
+        "<b>n&atilde;o roda processos</b>: a ponte &eacute; um daemon Lua que roda como " +
+        "servi&ccedil;o no Termux e conversa com o teclado por arquivos em " +
+        "<kbd>keyboard-lua/data/</kbd> (<kbd>cmd</kbd> &rarr; comando pedido, <kbd>out</kbd> " +
+        "&rarr; sa&iacute;da).</p><hr>");
 
-    b.append("<h2>O servi&ccedil;o <kbd>ipc-loop.sh</kbd></h2>");
-    b.append("<p>Rode no Termux (em background). Ele vigia <kbd>data/cmd</kbd>, executa como shell " +
-        "e grava a sa&iacute;da em <kbd>data/out</kbd>.</p>");
-    b.append("<pre>#!/data/data/com.termux/files/usr/bin/bash\n" +
-        "# ipc-loop.sh &mdash; ponte vi-key <-> Termux\n" +
-        "#   uso: bash ~/storage/shared/keyboard-lua/ipc-loop.sh\n" +
-        "DIR=\"$HOME/storage/shared/keyboard-lua\"\n" +
-        "DATA=\"$DIR/data\"\n" +
-        "mkdir -p \"$DIR\" \"$DATA\"\n" +
-        "termux-wake-lock\n" +
-        "while true; do\n" +
-        "  if [ -f \"$DATA/cmd\" ]; then\n" +
-        "    : > \"$DATA/out\"\n" +
-        "    bash \"$DATA/cmd\" > \"$DATA/out\" 2>&1\n" +
-        "    rm -f \"$DATA/cmd\"\n" +
-        "  fi\n" +
-        "  sleep 0.3\n" +
-        "done</pre>");
-    b.append("<p>No Termux: <kbd>mkdir -p ~/storage/shared/keyboard-lua/data</kbd>, " +
-        "salve o c&oacute;digo acima como <kbd>ipc-loop.sh</kbd>, torne execut&aacute;vel " +
-        "(<kbd>chmod +x ipc-loop.sh</kbd>) e rode <kbd>bash ipc-loop.sh &</kbd>.</p>");
+    b.append("<h2>1. Instalar no Termux</h2>");
+    b.append("<pre>pkg update &amp;&amp; pkg install -y termux-services lua5.1\n" +
+        "termux-setup-storage</pre>");
+    b.append("<p><kbd>termux-setup-storage</kbd> apenas na primeira vez (d&aacute; ao Termux " +
+        "acesso ao <kbd>/sdcard</kbd>; cria o atalho <kbd>~/storage/shared</kbd>).</p>");
 
-    b.append("<h2>Plugin <kbd>termux.lua</kbd> (envia comandos)</h2>");
-    b.append("<p>Salve como <kbd>/sdcard/keyboard-lua/plugins/termux.lua</kbd> (pode criar no Termux " +
-        "em <kbd>~/storage/shared/keyboard-lua/plugins/termux.lua</kbd>) e rode <kbd>:reload</kbd>. " +
-        "Uso: <kbd>:termux <comando></kbd>.</p>");
-    b.append("<pre>-- termux.lua &mdash; roda um comando no Termux e mostra a sa&iacute;da na statusbar\n" +
-        "--   uso: :termux <comando shell>\n" +
-        "local DIR = \"/sdcard/keyboard-lua/data\"\n" +
-        "local cmd = table.concat({...}, \" \")\n" +
-        "if cmd == \"\" then\n" +
-        "  vim.status(\"uso: :termux <comando>\")\n" +
-        "  return\n" +
-        "end\n" +
-        "os.execute(\"mkdir -p \" .. DIR)\n" +
-        "local tmp = DIR .. \"/cmd.tmp\"\n" +
-        "local f = io.open(tmp, \"w\")\n" +
-        "f:write(cmd .. \"\\n\")\n" +
-        "f:close()\n" +
-        "os.remove(DIR .. \"/cmd\")\n" +
-        "os.rename(tmp, DIR .. \"/cmd\")\n" +
-        "local done = false\n" +
-        "for i = 1, 50 do\n" +
-        "  local c = io.open(DIR .. \"/cmd\", \"r\")\n" +
-        "  if c then\n" +
-        "    c:close()\n" +
-        "    os.execute(\"sleep 0.2\")\n" +
-        "  else\n" +
-        "    done = true\n" +
-        "    break\n" +
-        "  end\n" +
-        "end\n" +
-        "if not done then\n" +
-        "  vim.status(\"termux n\u00e3o respondeu (checar servi\u00e7o keyboard-ipc)\")\n" +
-        "  return\n" +
-        "end\n" +
-        "local o = io.open(DIR .. \"/out\", \"r\")\n" +
-        "if not o then\n" +
-        "  vim.status(\"(sem sa\u00edda)\")\n" +
-        "  return\n" +
-        "end\n" +
-        "local s = o:read(\"*a\")\n" +
-        "o:close()\n" +
-        "if s == \"\" then s = \"(sem sa\u00edda)\" end\n" +
-        "vim.status(s:sub(1, 300))</pre>");
+    b.append("<h2>2. Criar o servi&ccedil;o <kbd>vk-ipc</kbd></h2>");
+    b.append("<p>O daemon &eacute; o pr&oacute;prio plugin <kbd>ipc-loop.lua</kbd> executado em modo " +
+        "<kbd>--daemon</kbd>. Um servi&ccedil;o runit d&aacute; auto-restart se o processo cair.</p>");
+    b.append("<pre>mkdir -p $PREFIX/var/service/vk-ipc/log\n" +
+        "cat &gt; $PREFIX/var/service/vk-ipc/run &lt;&lt;'EOF'\n" +
+        "#!/data/data/com.termux/files/usr/bin/sh\n" +
+        "exec /data/data/com.termux/files/usr/bin/lua5.1 /sdcard/keyboard-lua/plugins/ipc-loop.lua --daemon\n" +
+        "EOF\n" +
+        "cat &gt; $PREFIX/var/service/vk-ipc/log/run &lt;&lt;'EOF'\n" +
+        "#!/data/data/com.termux/files/usr/bin/sh\n" +
+        "mkdir -p /data/data/com.termux/files/usr/var/log/sv/vk-ipc\n" +
+        "exec svlogd -tt /data/data/com.termux/files/usr/var/log/sv/vk-ipc\n" +
+        "EOF\n" +
+        "chmod +x $PREFIX/var/service/vk-ipc/run $PREFIX/var/service/vk-ipc/log/run</pre>");
+    b.append("<p class=\"dim\"><kbd>$PREFIX</kbd> &eacute; <kbd>/data/data/com.termux/files/usr</kbd>.</p>");
 
-    b.append("<h2>Plugin <kbd>termuxout.lua</kbd> (mostra &uacute;ltima sa&iacute;da)</h2>");
-    b.append("<p>Salve como <kbd>/sdcard/keyboard-lua/plugins/termuxout.lua</kbd>, <kbd>:reload</kbd>. " +
-        "Uso: <kbd>:termuxout</kbd>.</p>");
-    b.append("<pre>-- termuxout.lua &mdash; mostra a &uacute;ltima sa&iacute;da do Termux na statusbar\n" +
-        "--   uso: :termuxout\n" +
-        "local f = io.open(\"/sdcard/keyboard-lua/data/out\", \"r\")\n" +
-        "if not f then\n" +
-        "  vim.status(\"(sem sa\u00edda ainda)\")\n" +
-        "  return\n" +
-        "end\n" +
-        "local s = f:read(\"*a\")\n" +
-        "f:close()\n" +
-        "if s == \"\" then s = \"(vazio)\" end\n" +
-        "vim.status(s:sub(1, 200))</pre>");
+    b.append("<h2>3. Ativar</h2>");
+    b.append("<pre>pgrep runsvdir &gt;/dev/null || service-daemon start\n" +
+        "sv-enable vk-ipc\n" +
+        "sv up vk-ipc</pre>");
+    b.append("<p><kbd>service-daemon start</kbd> liga o orquestrador de servi&ccedil;os (seguro de rodar " +
+        "sempre; s&oacute; sobe se ainda n&atilde;o estiver ativo). <kbd>sv-enable</kbd> registra o " +
+        "servi&ccedil;o para iniciar junto do Termux.</p>");
 
-    b.append("<p class=\"dim\">Depois da integra&ccedil;&atilde;o, voc&ecirc; cria os seus pr&oacute;prios scripts " +
-        "Lua na pasta <kbd>plugins</kbd> e usa <kbd>:reload</kbd> para ativ&aacute;-los. " +
-        "Veja <kbd>:help lua</kbd> para a API <kbd>vim.*</kbd> completa.</p>");
+    b.append("<h2>4. Verificar</h2>");
+    b.append("<pre>sv status vk-ipc\n" +
+        "pgrep -af ipc-loop.lua --daemon\n" +
+        "cat /sdcard/keyboard-lua/data/heartbeat</pre>");
+    b.append("<p>No teclado: <kbd>:reload</kbd> e depois <kbd>:ipcloop</kbd> deve mostrar " +
+        "&ldquo;ipc ativo&rdquo;. Teste com <kbd>:termux echo oi</kbd>.</p>");
+
+    b.append("<h2>Teste r&aacute;pido (sem servi&ccedil;o)</h2>");
+    b.append("<p>Para testar antes de criar o servi&ccedil;o, rode o daemon direto no Termux:</p>");
+    b.append("<pre>lua5.1 ~/storage/shared/keyboard-lua/plugins/ipc-loop.lua --daemon &amp;</pre>");
+    b.append("<p class=\"dim\">Assim ele encerra quando o Termux for fechado.</p>");
+
+    b.append("<h2>5. Boot do aparelho (opcional, recomendado)</h2>");
+    b.append("<p>Instale o aplicativo <b>Termux:Boot</b> (F-Droid) e crie " +
+        "<kbd>~/.termux/boot/vk-ipc.sh</kbd> execut&aacute;vel:</p>");
+    b.append("<pre>#!/data/data/com.termux/files/usr/bin/sh\n" +
+        "export HOME=/data/data/com.termux/files/home\n" +
+        "service-daemon start &gt;/dev/null 2&gt;&amp;1\n" +
+        "sleep 2\n" +
+        "exec sv start vk-ipc</pre>");
+
+    b.append("<p class=\"dim\">Os plugins s&atilde;o instalados a partir de um reposit&oacute;rio " +
+        "(veja tamb&eacute;m <kbd>:help lua</kbd> para o sistema de scripts e a API <kbd>vim.*</kbd>).</p>");
     b.append(vim_page_foot());
     return b.toString();
   }
@@ -1096,7 +1097,7 @@ public final class KeyEventHandler
     for (String[] c : cmds)
       b.append("<p><kbd>:").append(c[0]).append("</kbd> &mdash; ").append(c[1]).append("</p>");
     b.append("<p class=\"dim\">Al&eacute;m dos built-in, cada script Lua vira um comando <kbd>:&lt;nome&gt;</kbd> " +
-        "e plugins de exemplo como <kbd>termux</kbd>/<kbd>cat</kbd>/<kbd>termuxout</kbd> ficam " +
+        "e plugins de exemplo como <kbd>termux</kbd>/<kbd>ipcloop</kbd> ficam " +
         "dispon&iacute;veis (veja <kbd>:help termux</kbd>).</p>");
     b.append(vim_page_foot());
     return b.toString();

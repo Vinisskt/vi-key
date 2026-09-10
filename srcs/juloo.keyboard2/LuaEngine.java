@@ -53,6 +53,12 @@ import org.luaj.vm2.lib.jse.JsePlatform;
       - [vim.status(text)]: show a transient message in the keyboard status bar
       - [vim.page(text)]: open (or update) a browser page showing [text] as
         plain text, styled like the help page
+      - [vim.interval(ms, fn)]: call [fn] on the keyboard queue every [ms]
+        milliseconds (non blocking); returns a handle to pass to
+        [vim.clear_interval]. Timers are cancelled by [reload]. [fn] must be
+        fast (short file reads, updates); it runs on the keyboard main thread.
+      - [vim.clear_interval(handle)]: cancel a timer created by
+        [vim.interval].
     Positions are relative to the beginning of the text returned by
     [vim.get_text()]. */
 final class LuaEngine
@@ -61,6 +67,8 @@ final class LuaEngine
   File _lua_dir;
   final Globals _globals;
   final Map<String, LuaValue> _commands = new HashMap<String, LuaValue>();
+  final Map<Integer, TimerHandle> _intervals = new HashMap<Integer, TimerHandle>();
+  int _next_interval_id = 1;
 
   LuaEngine(KeyEventHandler handler, Context appCtx)
   {
@@ -112,6 +120,7 @@ final class LuaEngine
     if (_globals.compiler == null)
       LuaC.install(_globals);
     setup_vim_api();
+    setup_package_path();
     reload();
   }
 
@@ -126,14 +135,39 @@ final class LuaEngine
     {
       _lua_dir = user_lua_dir();
       ensure_user_lua_dir();
+      setup_package_path();
     }
     _commands.clear();
+    clear_intervals();
+    File init_file = new File(_lua_dir, "init.lua");
+    if (init_file.exists() && init_file.isFile())
+    {
+      // [init.lua] is the entry point of the plugins: it require()s the
+      // modules of the [plugins] subfolder ([package.path] is set by
+      // [setup_package_path]). Reset the require cache so that a reload
+      // re-runs every module.
+      _globals.get("package").set("loaded", new LuaTable());
+      load_script(init_file);
+      return;
+    }
     List<File> files = new ArrayList<File>();
     add_files(files, _lua_dir);
     add_files(files, new File(_lua_dir, "plugins"));
     Collections.sort(files);
     for (File f : files)
       load_script(f);
+  }
+
+  /** Extend [package.path] so that Lua modules loaded from [init.lua] can be
+      required from the script folder itself and from its [plugins]
+      subfolder: [require("name")] resolves to [dir/name.lua] and
+      [dir/plugins/name.lua]. */
+  void setup_package_path()
+  {
+    String root = _lua_dir.getPath();
+    String base = _globals.get("package").get("path").tojstring();
+    _globals.get("package").set("path",
+        base + ";" + root + "/?.lua;" + root + "/plugins/?.lua");
   }
 
   /** Append the [.lua] script files of [dir] (when it exists) to [out]. */
@@ -179,7 +213,7 @@ final class LuaEngine
           file.getName(), "t", _globals);
       chunk.call();
       String name = command_name_of_file(file.getName());
-      if (!name.isEmpty() && !_commands.containsKey(name))
+      if (!name.isEmpty() && !name.equals("init") && !_commands.containsKey(name))
         _commands.put(name, new ScriptCommand(chunk));
     }
     catch (IOException ex)
@@ -410,6 +444,77 @@ final class LuaEngine
         return LuaValue.NONE;
       }
     });
+    vim.set("interval", new VarArgFunction() {
+      @Override public Varargs invoke(Varargs args) {
+        long ms = args.arg1().tolong();
+        LuaValue fn = args.arg(2);
+        if (ms <= 0 || !fn.isfunction())
+          return LuaValue.NONE;
+        int id = _next_interval_id++;
+        TimerHandle t = new TimerHandle(id, ms, fn);
+        _intervals.put(id, t);
+        _handler.get_handler().postDelayed(t, ms);
+        return LuaValue.valueOf(id);
+      }
+    });
+    vim.set("clear_interval", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue id) {
+        TimerHandle t = _intervals.remove(id.toint());
+        if (t != null)
+          t.cancel();
+        return LuaValue.NONE;
+      }
+    });
+  }
+
+  /** Cancel every running timer (called by [reload]). */
+  void clear_intervals()
+  {
+    for (TimerHandle t : _intervals.values())
+      t.cancel();
+    _intervals.clear();
+  }
+
+  /** A timer scheduled through [vim.interval]: runs [fn] on the keyboard main
+      queue every [periodMs] milliseconds and reschedules itself until
+      cancelled (by [vim.clear_interval] or [reload]). Errors cancel the
+      timer to avoid error loops. */
+  final class TimerHandle implements Runnable
+  {
+    final int _id;
+    final long _periodMs;
+    final LuaValue _fn;
+    boolean _cancelled;
+
+    TimerHandle(int id, long periodMs, LuaValue fn)
+    {
+      _id = id;
+      _periodMs = periodMs;
+      _fn = fn;
+    }
+
+    @Override public void run()
+    {
+      if (_cancelled)
+        return;
+      try
+      {
+        _fn.call();
+      }
+      catch (Exception ex)
+      {
+        cancel();
+        LuaEngine.this.flash("lua interval: " + ex.getMessage());
+        return;
+      }
+      if (!_cancelled)
+        _handler.get_handler().postDelayed(this, _periodMs);
+    }
+
+    void cancel()
+    {
+      _cancelled = true;
+    }
   }
 
   InputConnection current_conn()

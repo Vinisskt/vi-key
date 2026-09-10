@@ -27,6 +27,17 @@ public class VimEngineTest extends VimTestBase
   }
 
   @Test
+  public void a_appends_after_cursor_into_insert_mode()
+  {
+    buffer("abc", 0);
+    press_escape();
+    press("a");
+    assertTrue(insert());
+    // moves one char to the right (DPAD_RIGHT: down + up) before inserting
+    assertEquals(4, _conn.keyEvents.size());
+  }
+
+  @Test
   public void plain_esc_in_insert_goes_to_the_app()
   {
     buffer("abc", 0);
