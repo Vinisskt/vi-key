@@ -20,7 +20,6 @@ public final class FakeReceiver implements KeyEventHandler.IReceiver
   public String floatUrl = null;
   public int helpOpened = 0;
   public final List<String> pages = new ArrayList<String>();
-  public boolean suggestionsUpdated = false;
 
   @Override public void handle_event_key(KeyValue.Event ev) { events.add(ev); }
   @Override public void set_shift_state(boolean state, boolean lock)
@@ -42,9 +41,6 @@ public final class FakeReceiver implements KeyEventHandler.IReceiver
   @Override public void open_help() { helpOpened++; }
   @Override public void open_page(String title, String html)
   { pages.add(title + "\u0000" + html); }
-
-  @Override public void set_suggestions(com.vinisskt.vikey.suggestions.Suggestions suggestions)
-  { suggestionsUpdated = true; }
 
   public String lastStatus() { return vimStatuses.isEmpty() ? null : vimStatuses.get(vimStatuses.size() - 1); }
   public boolean lastStatusIn(String s) { return s.contains(s); }

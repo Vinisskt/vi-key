@@ -20,7 +20,7 @@ public class SearchBarTest
   public void setup()
   {
     _receiver = new FakeReceiver();
-    _handler = new KeyEventHandler(_receiver, null);
+    _handler = new KeyEventHandler(_receiver);
     _search = new SearchBar(_handler._vim);
     _conn = _receiver.conn;
   }
@@ -170,7 +170,7 @@ public class SearchBarTest
   @Test
   public void find_now_without_connection_returns_zero()
   {
-    _handler = new KeyEventHandler(new NullConnReceiver(), null);
+    _handler = new KeyEventHandler(new NullConnReceiver());
     _search = new SearchBar(_handler._vim);
     _search.begin();
     _search.type('x');
@@ -180,7 +180,7 @@ public class SearchBarTest
   @Test
   public void find_now_when_editor_has_no_text_is_skipped()
   {
-    _handler = new KeyEventHandler(new NullExtractReceiver(), null);
+    _handler = new KeyEventHandler(new NullExtractReceiver());
     _search = new SearchBar(_handler._vim);
     _search.begin();
     _search.type('h');
@@ -203,7 +203,7 @@ public class SearchBarTest
   @Test
   public void select_current_without_connection_is_ignored()
   {
-    _handler = new KeyEventHandler(new NullConnReceiver(), null);
+    _handler = new KeyEventHandler(new NullConnReceiver());
     _search = new SearchBar(_handler._vim);
     _search._matches = new java.util.ArrayList<Integer>();
     _search._matches.add(0);
@@ -251,7 +251,6 @@ public class SearchBarTest
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
     @Override public void open_page(String title, String html) {}
-    @Override public void set_suggestions(com.vinisskt.vikey.suggestions.Suggestions s) {}
   }
 
   /** A receiver whose connection reports no extracted text. */
@@ -280,6 +279,5 @@ public class SearchBarTest
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
     @Override public void open_page(String title, String html) {}
-    @Override public void set_suggestions(com.vinisskt.vikey.suggestions.Suggestions s) {}
   }
 }

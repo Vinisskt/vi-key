@@ -12,7 +12,6 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
-import com.vinisskt.vikey.dict.DictionariesActivity;
 import com.vinisskt.vikey.R;
 
 public class LauncherActivity extends Activity
@@ -63,11 +62,6 @@ public class LauncherActivity extends Activity
     InputMethodManager imm =
       (InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
     imm.showInputMethodPicker();
-  }
-
-  public void launch_dictionaries_activity(View v)
-  {
-    startActivity(new Intent(this, DictionariesActivity.class));
   }
 
   final class Tryhere_OnUnhandledKeyEventListener implements View.OnUnhandledKeyEventListener

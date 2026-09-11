@@ -308,7 +308,6 @@ public class KeyEventHandlerTest extends VimTestBase
     buffer("abc", 0);
     press("hello ");
     _handler.currently_typed_word("foo");
-    _handler.dictionary_changed();
     _handler.selection_updated(5, 6, 6);
   }
 

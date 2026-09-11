@@ -3,9 +3,7 @@ package com.vinisskt.vikey;
 import org.junit.Before;
 
 /** Base for pure-JVM tests driving [KeyEventHandler]/[VimEngine] through a
-    fake [IReceiver]. The [Suggestions] component and the [Config] require an
-    Android [Context] and are not exercisable on the JVM; the handler is built
-    with [null] suggestions, which the production code tolerates. */
+    fake [IReceiver]. */
 public abstract class VimTestBase
 {
   protected FakeReceiver _receiver;
@@ -16,7 +14,7 @@ public abstract class VimTestBase
   public void setup_vim()
   {
     _receiver = new FakeReceiver();
-    _handler = new KeyEventHandler(_receiver, null);
+    _handler = new KeyEventHandler(_receiver);
     _conn = _receiver.conn;
   }
 

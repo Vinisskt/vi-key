@@ -16,7 +16,6 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
-import com.vinisskt.vikey.suggestions.Suggestions;
 
 public final class KeyEventHandler
   implements Config.IKeyEventHandler,
@@ -25,7 +24,6 @@ public final class KeyEventHandler
 {
   IReceiver _recv;
   Autocapitalisation _autocap;
-  Suggestions _suggestions;
   CurrentlyTypedWord _typedword;
   final VimEngine _vim;
   final LuaEngine _lua;
@@ -39,8 +37,6 @@ public final class KeyEventHandler
   /** Whether to force sending arrow keys to move the cursor when
       [setSelection] could be used instead. */
   boolean _move_cursor_force_fallback = false;
-  /** Whether the space bar automatically enters the best suggestion. */
-  boolean _space_bar_auto_complete = false;
   /** Remember the action that was handled. This is used by autocorrect. */
   LastAction _last_action = null;
   LastAction _next_last_action = null;
@@ -50,14 +46,13 @@ public final class KeyEventHandler
       [Keyboard2View]. */
   Map<Character, Character> _quick_symbols = new TreeMap<Character, Character>();
 
-  public KeyEventHandler(IReceiver recv, Suggestions sg)
+  public KeyEventHandler(IReceiver recv)
   {
     _recv = recv;
     Handler handler = recv.getHandler();
     _autocap = new Autocapitalisation(handler,
         this.new Autocapitalisation_callback());
     _mods = Pointers.Modifiers.EMPTY;
-    _suggestions = sg;
     _typedword = new CurrentlyTypedWord(handler, this);
     _vim = new VimEngine(this);
     Context ctx = recv.getApplicationContext();
@@ -75,11 +70,8 @@ public final class KeyEventHandler
     InputConnection ic = _recv.getCurrentInputConnection();
     _autocap.started(conf, ic);
     _typedword.started(conf, ic);
-    if (_suggestions != null)
-      _suggestions.started();
     _move_cursor_force_fallback =
       conf.editor_config.should_move_cursor_force_fallback;
-    _space_bar_auto_complete = conf.space_bar_auto_complete;
     _last_action = null;
     _vim.reset();
   }
@@ -231,18 +223,7 @@ public final class KeyEventHandler
   }
 
   @Override
-  public void currently_typed_word(String word)
-  {
-    if (_suggestions != null)
-      _suggestions.currently_typed_word(word);
-  }
-
-  public void dictionary_changed()
-  {
-    // Refresh the suggestions immediately after dictionary changed.
-    if (_suggestions != null)
-      _suggestions.currently_typed_word(_typedword.get());
-  }
+  public void currently_typed_word(String word) {}
 
   /** Update [_mods] to be consistent with the [mods], sending key events if
       needed. */
@@ -647,13 +628,7 @@ public final class KeyEventHandler
   /** Implement autocorrect when enabled in the settings. */
   void handle_space_bar()
   {
-    if (_space_bar_auto_complete && _suggestions != null
-        && _suggestions.count > 0
-        && !_typedword.is_selection_not_empty()
-        && _typedword.cursor_relative() == 0)
-      suggestion_entered(_suggestions.suggestions[0] + " ");
-    else
-      send_text(" ");
+    send_text(" ");
   }
 
   /** Undo the last autocorrect. */
@@ -1318,7 +1293,7 @@ public final class KeyEventHandler
       cm.setPrimaryClip(ClipData.newPlainText("vim", text));
   }
 
-  public static interface IReceiver extends Suggestions.Callback
+  public static interface IReceiver
   {
     public void handle_event_key(KeyValue.Event ev);
     public void set_shift_state(boolean state, boolean lock);

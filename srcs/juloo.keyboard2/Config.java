@@ -8,8 +8,6 @@ import android.util.TypedValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import juloo.cdict.Cdict;
-import com.vinisskt.vikey.dict.Dictionaries;
 import com.vinisskt.vikey.prefs.CustomExtraKeysPreference;
 import com.vinisskt.vikey.prefs.ExtraKeysPreference;
 import com.vinisskt.vikey.prefs.LayoutsPreference;
@@ -44,7 +42,6 @@ public final class Config
   public boolean number_row_symbols;
   public float swipe_dist_px;
   public float slide_step_px;
-  public boolean suggestions_enabled;
   // Let the system handle vibration when false.
   public boolean vibrate_custom;
   // Control the vibration if [vibrate_custom] is true.
@@ -74,7 +71,6 @@ public final class Config
   public int circle_sensitivity;
   public boolean clipboard_history_enabled;
   public int clipboard_history_duration;
-  public boolean space_bar_auto_complete;
   public boolean physical_keyboard_hide;
 
   // Dynamically set
@@ -85,11 +81,6 @@ public final class Config
   public Map<KeyValue, KeyboardData.PreferredPos> extra_keys_param;
   public Map<KeyValue, KeyboardData.PreferredPos> extra_keys_custom;
   public DeviceLocales device_locales = null;
-  public Cdict current_dictionary = null; // Might be 'null'.
-  public Cdict emoji_dictionary = null; // Might be 'null'.
-  public String current_dictionary_name = null; // Display name for the current language
-  /** Whether to show the dictionary switching button in the candidates view. */
-  public boolean should_show_dictionary_switch = false;
   public IKeyEventHandler handler;
   public boolean orientation_landscape = false;
   public boolean foldable_unfolded = false;
@@ -102,7 +93,7 @@ public final class Config
   public boolean split_layout;
 
   private Config(SharedPreferences prefs, Resources res,
-      Boolean foldableUnfolded, Dictionaries dicts)
+      Boolean foldableUnfolded)
   {
     _prefs = prefs;
     editor_config = new EditorConfig();
@@ -112,7 +103,7 @@ public final class Config
     labelTextSize = 0.33f;
     sublabelTextSize = 0.22f;
     // from prefs
-    refresh(res, foldableUnfolded, dicts);
+    refresh(res, foldableUnfolded);
     // initialized later
     shouldOfferVoiceTyping = false;
     extra_keys_subtype = null;
@@ -121,7 +112,7 @@ public final class Config
   /*
    ** Reload prefs
    */
-  public void refresh(Resources res, Boolean foldableUnfolded, Dictionaries dicts)
+  public void refresh(Resources res, Boolean foldableUnfolded)
   {
     DisplayMetrics dm = res.getDisplayMetrics();
     orientation_landscape = res.getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
@@ -153,7 +144,6 @@ public final class Config
     String number_row = _prefs.getString("number_row", "no_number_row");
     add_number_row = !number_row.equals("no_number_row");
     number_row_symbols = number_row.equals("symbols");
-    suggestions_enabled = _prefs.getBoolean("suggestions", true);
     // The baseline for the swipe distance correspond to approximately the
     // width of a key in portrait mode, as most layouts have 10 columns.
     // Multipled by the DPI ratio because most swipes are made in the diagonals.
@@ -194,7 +184,7 @@ public final class Config
     characterSize =
       _prefs.getFloat("character_size", 1.15f)
       * characterSizeScale;
-    theme = getThemeId(res, _prefs.getString("theme", ""));
+    theme = R.style.Gruvbox;
     autocapitalisation = _prefs.getBoolean("autocapitalisation", true);
     change_method_key_replacement = get_change_method_key_replacement(_prefs);
     extra_keys_param = ExtraKeysPreference.get_extra_keys(_prefs);
@@ -205,7 +195,6 @@ public final class Config
     circle_sensitivity = Integer.valueOf(_prefs.getString("circle_sensitivity", "2"));
     clipboard_history_enabled = _prefs.getBoolean("clipboard_history_enabled", false);
     clipboard_history_duration = Integer.parseInt(_prefs.getString("clipboard_history_duration", "5"));
-    space_bar_auto_complete = _prefs.getBoolean("space_bar_auto_complete", false);
     physical_keyboard_hide = _prefs.getString("physical_keyboard_behavior", "hide").equals("hide");
     float screen_width_dp = dm.widthPixels / dm.density;
     wide_screen = screen_width_dp >= WIDE_DEVICE_THRESHOLD;
@@ -261,41 +250,6 @@ public final class Config
     return get_dip_pref(dm, pref_base_name + suffix, def);
   }
 
-  private int getThemeId(Resources res, String theme_name)
-  {
-    int night_mode = res.getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-    switch (theme_name)
-    {
-      case "light": return R.style.Light;
-      case "black": return R.style.Black;
-      case "altblack": return R.style.AltBlack;
-      case "dark": return R.style.Dark;
-      case "white": return R.style.White;
-      case "epaper": return R.style.ePaper;
-      case "desert": return R.style.Desert;
-      case "jungle": return R.style.Jungle;
-      case "monetlight": return R.style.MonetLight;
-      case "monetdark": return R.style.MonetDark;
-      case "monet":
-        if ((night_mode & Configuration.UI_MODE_NIGHT_NO) != 0)
-          return R.style.MonetLight;
-        return R.style.MonetDark;
-      case "rosepine": return R.style.RosePine;
-      case "everforestlight": return R.style.EverforestLight;
-      case "cobalt": return R.style.Cobalt;
-      case "pine": return R.style.Pine;
-      case "epaperblack": return R.style.ePaperBlack;
-      case "dracula": return R.style.Dracula;
-      case "gradientpurplepink": return R.style.GradientPurplePink;
-      case "gruvbox": return R.style.Gruvbox;
-      default:
-      case "system":
-        if ((night_mode & Configuration.UI_MODE_NIGHT_NO) != 0)
-          return R.style.Light;
-        return R.style.Dark;
-    }
-  }
-
   private static KeyValue get_change_method_key_replacement(SharedPreferences prefs)
   {
     switch (prefs.getString("change_method_key_replacement", "prev"))
@@ -320,10 +274,10 @@ public final class Config
   private static Config _globalConfig = null;
 
   public static void initGlobalConfig(SharedPreferences prefs, Resources res,
-      Boolean foldableUnfolded, Dictionaries dicts)
+      Boolean foldableUnfolded)
   {
     migrate(prefs);
-    _globalConfig = new Config(prefs, res, foldableUnfolded, dicts);
+    _globalConfig = new Config(prefs, res, foldableUnfolded);
     LayoutModifier.init(_globalConfig, res);
   }
 

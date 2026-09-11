@@ -32,7 +32,7 @@ android {
   sourceSets {
     named("main") {
       manifest.srcFile("AndroidManifest.xml")
-      java.srcDirs("srcs/juloo.keyboard2", "vendor/cdict/java/juloo.cdict")
+      java.srcDirs("srcs/juloo.keyboard2")
       res.srcDirs("res", "build/generated-resources")
       assets.srcDirs("assets")
     }
@@ -101,14 +101,6 @@ android {
   }
 }
 
-
-// This raises an error with an informative message instead of the confusing
-// ndk-build errors that occur when submodules are not initialized.
-gradle.projectsEvaluated {
-  if (!file("vendor/cdict/java").exists())
-    throw GradleException("Git submodules not initialized. Run 'git submodule update --init'")
-}
-
 val buildKeyboardFont by tasks.registering(Exec::class) {
   val `in` = projectDir.resolve("srcs/special_font")
   val out = layout.projectDirectory.file("assets/special_font.ttf")
@@ -139,7 +131,6 @@ val genLayoutsList by tasks.registering(Exec::class) {
 val genMethodXml by tasks.registering(Exec::class) {
   val out = projectDir.resolve("res/xml/method.xml")
   inputs.file(projectDir.resolve("gen_method_xml.py"))
-  inputs.file(projectDir.resolve("res/values/dictionaries.xml"))
   outputs.file(out)
   doFirst { println("\nGenerating res/xml/method.xml") }
   doFirst { standardOutput = FileOutputStream(out) }
@@ -182,7 +173,7 @@ val jacocoTestReport by tasks.registering(JacocoReport::class) {
     xml.required.set(true)
     html.required.set(true)
   }
-  sourceDirectories.setFrom(files("srcs/juloo.keyboard2", "vendor/cdict/java"))
+  sourceDirectories.setFrom(files("srcs/juloo.keyboard2"))
   classDirectories.setFrom(fileTree(layout.buildDirectory) {
     include("**/javac/**/classes/juloo/**/*.class",
         "**/kotlin-classes/**/juloo/**/*.class")
@@ -204,9 +195,9 @@ val copyRawQwertyUS by tasks.registering(Copy::class) {
   into("build/generated-resources/raw")
 }
 
-val copyLayoutDefinitions by tasks.registering(Copy::class) {
+val copyLayoutDefinitions by tasks.registering(Sync::class) {
   from("srcs/layouts")
-  include("*.xml")
+  include("vim_prog.xml", "latn_qwerty_us.xml")
   into("build/generated-resources/xml")
 }
 

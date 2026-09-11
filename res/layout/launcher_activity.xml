@@ -23,7 +23,6 @@
 
     <Button style="@style/vi_btn" android:text="@string/launcher_button_imesettings" android:onClick="launch_imesettings" android:layout_width="wrap_content"/>
     <Button style="@style/vi_btn" android:text="@string/launcher_button_imepicker" android:onClick="launch_imepicker" android:layout_width="wrap_content"/>
-    <Button style="@style/vi_btn" android:text="@string/launcher_button_dictionaries" android:onClick="launch_dictionaries_activity" android:layout_width="wrap_content"/>
 
     <View android:layout_width="fill_parent" android:layout_height="1dp" android:layout_marginVertical="12dp" android:background="@color/vi_border"/>
 

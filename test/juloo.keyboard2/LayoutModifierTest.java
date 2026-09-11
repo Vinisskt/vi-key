@@ -22,7 +22,6 @@ public class LayoutModifierTest
     LayoutModifier.number_row_no_symbols = null;
     LayoutModifier.number_row_symbols = null;
     LayoutModifier.num_pad = null;
-    LayoutModifier.split_middle_column = null;
   }
 
   /** A Config whose private constructor didn't run: all writable fields stay
@@ -307,7 +306,6 @@ public class LayoutModifierTest
     LayoutModifier.globalConfig = c;
     LayoutModifier.number_row_symbols = row(
         oneKey(digit('1'), 1.f, 0.f), oneKey(digit('2'), 1.f, 0.f));
-    LayoutModifier.split_middle_column = row(oneKey(key("backspace"), 1.f, 0.f));
     KeyboardData kw = keyboard(false,
         row(oneKey(digit('1'), 1.f, 0.f), oneKey(KV_A, 1.f, 0.f)));
     KeyboardData out = LayoutModifier.modify_layout(kw);
@@ -315,8 +313,8 @@ public class LayoutModifierTest
     assertEquals(2, out.rows.size());
     assertEquals(2, out.rows.get(0).keys.size());
     assertTrue(out.getKeys().containsKey(digit('2')));
-    // The main row was split: it contains the middle column key.
-    assertTrue(out.getKeys().containsKey(key("backspace")));
+    // The main row was split: it keeps its original keys.
     assertTrue(out.getKeys().containsKey(KV_A));
+    assertTrue(out.getKeys().containsKey(digit('1')));
   }
 }

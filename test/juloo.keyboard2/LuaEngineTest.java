@@ -303,7 +303,6 @@ public class LuaEngineTest extends VimTestBase
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
     @Override public void open_page(String title, String html) {}
-    @Override public void set_suggestions(com.vinisskt.vikey.suggestions.Suggestions s) {}
     String lastStatus() { return statuses.isEmpty() ? null : statuses.get(statuses.size() - 1); }
   }
 
@@ -311,7 +310,7 @@ public class LuaEngineTest extends VimTestBase
   public void get_sel_without_connection_returns_none()
   {
     NoConnReceiver recv = new NoConnReceiver();
-    _handler = new KeyEventHandler(recv, null);
+    _handler = new KeyEventHandler(recv);
     new_engine();
     write_script("a.lua",
         "vim.register('sel', function() vim.status(vim.get_sel()) end)");
@@ -324,7 +323,7 @@ public class LuaEngineTest extends VimTestBase
   public void get_text_without_connection_returns_empty()
   {
     NoConnReceiver recv = new NoConnReceiver();
-    _handler = new KeyEventHandler(recv, null);
+    _handler = new KeyEventHandler(recv);
     new_engine();
     write_script("a.lua",
         "vim.register('txt', function() vim.status('[' .. vim.get_text() .. ']') end)");
@@ -491,7 +490,7 @@ public class LuaEngineTest extends VimTestBase
   public void replace_with_null_extract_returns_base_minus_one()
   {
     new_engine();
-    _handler = new KeyEventHandler(new NoConnReceiver(), null);
+    _handler = new KeyEventHandler(new NoConnReceiver());
     lua = new LuaEngine(_handler, dir);
     lua.save_script("b", "vim.register('rep', function() vim.replace(1, 3, 'Z') end)");
     lua.execute("rep", "");
