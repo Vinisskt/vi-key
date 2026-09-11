@@ -465,6 +465,12 @@ final class LuaEngine
         return LuaValue.NONE;
       }
     });
+    vim.set("status_hold", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue s) {
+        _handler._vim.set_status(s.tojstring(), VimEngine.STATUS_COLOR_CMD);
+        return LuaValue.NONE;
+      }
+    });
     vim.set("page", new OneArgFunction() {
       @Override public LuaValue call(LuaValue s) {
         _handler.open_page("out", s.tojstring());

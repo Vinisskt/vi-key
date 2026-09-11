@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.WebView;
@@ -26,6 +27,9 @@ public final class BrowserActivity extends Activity
 
   private WebView _webview;
   private EditText _url_input;
+  private int _page_scroll_y;
+  private boolean _page_at_bottom = true;
+  private int _page_pending_scroll = Integer.MIN_VALUE;
 
   public static boolean is_open()
   {
@@ -136,10 +140,13 @@ public final class BrowserActivity extends Activity
   }
 
   /** Rewrite the content of this page with the given HTML (used to update the
-      page at every [open_page] call). */
+      page at every [open_page] call). Keeps the scroll position: if the user
+      was looking at live (growing) output the page stays glued to the bottom;
+      otherwise it stays where it was. */
   void show_page(String title, String html)
   {
     _url_input.setText(title);
+    _page_pending_scroll = _page_at_bottom ? Integer.MAX_VALUE : _page_scroll_y;
     _webview.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
   }
 
@@ -153,9 +160,24 @@ public final class BrowserActivity extends Activity
     _webview.getSettings().setLoadWithOverviewMode(true);
     _webview.getSettings().setUseWideViewPort(true);
     _webview.setBackgroundColor(0xFF1D2021);
+    _webview.getViewTreeObserver().addOnScrollChangedListener(new ViewTreeObserver.OnScrollChangedListener() {
+      @Override public void onScrollChanged()
+      {
+        WebView w = _webview;
+        _page_scroll_y = w.getScrollY();
+        int extent = (int) (w.getContentHeight() * w.getScale()) - w.getMeasuredHeight();
+        _page_at_bottom = extent - _page_scroll_y < 8;
+      }
+    });
     _webview.setWebViewClient(new WebViewClient() {
       @Override public void onPageFinished(WebView view, String current_url)
       {
+        int target = _page_pending_scroll;
+        _page_pending_scroll = Integer.MIN_VALUE;
+        if (target != Integer.MIN_VALUE)
+          view.post(new Runnable() {
+            @Override public void run() { view.scrollTo(0, target); }
+          });
         _url_input.setText(current_url);
       }
     });

@@ -373,6 +373,13 @@ public final class VimEngine
     }, STATUS_DURATION_MS);
   }
 
+  /** Like [flash_status], but keeps the text until the next status update
+      (mode change, a new command, etc.). Used for persistent, rolling output. */
+  void set_status(String text, int color)
+  {
+    _handler._recv.set_vim_status(text, color);
+  }
+
   void update_status()
   {
     String text;
