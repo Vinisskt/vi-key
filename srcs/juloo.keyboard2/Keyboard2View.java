@@ -53,6 +53,7 @@ public class Keyboard2View extends View
   private int _insets_bottom = 0;
 
   private Theme _theme;
+  private AttributeSet _attrs;
   private Theme.Computed _tc;
 
   private static RectF _tmpRect = new RectF();
@@ -67,6 +68,7 @@ public class Keyboard2View extends View
   public Keyboard2View(Context context, AttributeSet attrs)
   {
     super(context, attrs);
+    _attrs = attrs;
     _theme = new Theme(getContext(), attrs);
     _config = Config.globalConfig();
     _pointers = new Pointers(this, _config);
@@ -78,6 +80,25 @@ public class Keyboard2View extends View
       reset();
     else
       setKeyboard(KeyboardData.load(getResources(), layout_id));
+  }
+
+  /** The keyboard background color currently applied to the theme. */
+  int theme_color_keyboard()
+  {
+    return _theme.colorKeyboard;
+  }
+
+  /** Rebuild the paints from the currently active theme override ([ThemeData]
+      is read again at construction) and redraw the existing view in place,
+      without recreating it (recreating the whole layout while the IME is
+      showing can crash the process). */
+  public void retheme()
+  {
+    _theme = new Theme(getContext(), _attrs);
+    refresh_navigation_bar(getContext());
+    // [onMeasure] rebuilds [_tc] (the paints) from the new [_theme].
+    requestLayout();
+    invalidate();
   }
 
   private Window getParentWindow(Context context)

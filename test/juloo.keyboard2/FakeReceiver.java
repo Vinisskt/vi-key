@@ -19,6 +19,7 @@ public final class FakeReceiver implements KeyEventHandler.IReceiver
   public boolean floatOpen = false;
   public String floatUrl = null;
   public int helpOpened = 0;
+  public int themeChanges = 0;
   public final List<String> pages = new ArrayList<String>();
 
   @Override public void handle_event_key(KeyValue.Event ev) { events.add(ev); }
@@ -41,6 +42,7 @@ public final class FakeReceiver implements KeyEventHandler.IReceiver
   @Override public void open_help() { helpOpened++; }
   @Override public void open_page(String title, String html)
   { pages.add(title + "\u0000" + html); }
+  @Override public void theme_changed() { themeChanges++; }
 
   public String lastStatus() { return vimStatuses.isEmpty() ? null : vimStatuses.get(vimStatuses.size() - 1); }
   public boolean lastStatusIn(String s) { return s.contains(s); }

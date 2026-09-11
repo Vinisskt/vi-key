@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -27,6 +28,15 @@ public class LuaEngineTest extends VimTestBase
     }
     lua = new LuaEngine(_handler, dir);
     return lua;
+  }
+
+  @Override
+  @Before
+  public void setup_vim()
+  {
+    super.setup_vim();
+    // The active theme is a static; reset it between tests.
+    ThemeData.set_active(null);
   }
 
   void write_script(String name, String content)
@@ -495,5 +505,98 @@ public class LuaEngineTest extends VimTestBase
     lua.save_script("b", "vim.register('rep', function() vim.replace(1, 3, 'Z') end)");
     lua.execute("rep", "");
     // replace(1, 3, "Z") with base=-1: the guard rejects the replacement.
+  }
+
+  @Test
+  public void theme_registers_and_set_theme_applies()
+  {
+    new_engine();
+    write_script("t.lua",
+        "vim.theme('ocean', { colorKeyboard = '#101418', colorKey = '#151a22', colorLabel = '#cdd6f4' })\n" +
+        "vim.set_theme('ocean')\n" +
+        "vim.register('theme_name', function() vim.status(vim.current_theme()) end)\n");
+    lua.reload();
+    ThemeData td = ThemeData.active();
+    assertNotNull(td);
+    assertEquals(0xFF101418, td.colorKeyboard.intValue());
+    assertEquals(0xFF151A22, td.colorKey.intValue());
+    assertEquals(0xFFCDD6F4, td.labelColor.intValue());
+    assertNull(td.colorKeyActivated);
+    assertEquals(2, _receiver.themeChanges);
+    lua.execute("theme_name", "");
+    assertTrue(_receiver.lastStatus().startsWith("ocean"));
+  }
+
+  @Test
+  public void theme_accepts_numeric_and_rgba_colors()
+  {
+    new_engine();
+    write_script("t.lua",
+        "vim.theme('num', { colorKey = 0xFF282828, colorSubLabel = '#80d5c4a1' })\n" +
+        "vim.set_theme('num')\n");
+    lua.reload();
+    ThemeData td = ThemeData.active();
+    assertNotNull(td);
+    assertEquals(0xFF282828, td.colorKey.intValue());
+    assertEquals(0x80D5C4A1, td.subLabelColor.intValue());
+  }
+
+  @Test
+  public void set_theme_with_unknown_name_flashes()
+  {
+    new_engine();
+    write_script("a.lua", "vim.set_theme('nope')");
+    lua.reload();
+    assertTrue(_receiver.lastStatus().startsWith("no theme "));
+    assertNull(ThemeData.active());
+    assertEquals(0, _receiver.themeChanges);
+  }
+
+  @Test
+  public void set_theme_restores_default_on_empty_string()
+  {
+    new_engine();
+    write_script("t.lua",
+        "vim.theme('o', { colorLabel = '#ffffff' })\n" +
+        "vim.set_theme('o')\n" +
+        "vim.set_theme('')\n");
+    lua.reload();
+    assertNull(ThemeData.active());
+    assertEquals(2, _receiver.themeChanges);
+    lua.execute("t", "");
+  }
+
+  @Test
+  public void theme_flashes_on_invalid_color()
+  {
+    new_engine();
+    write_script("a.lua", "vim.theme('bad', { colorKey = 'not-a-color' })");
+    lua.reload();
+    assertTrue(_receiver.lastStatus().startsWith("lua theme: invalid color"));
+    assertNull(ThemeData.active());
+  }
+
+  @Test
+  public void theme_with_non_table_second_argument_is_rejected()
+  {
+    new_engine();
+    write_script("a.lua", "vim.theme('bad', 42)");
+    lua.reload();
+    assertTrue(_receiver.lastStatus().startsWith("theme: expected a table"));
+    assertNull(ThemeData.active());
+  }
+
+  @Test
+  public void reload_keeps_active_theme_when_still_registered()
+  {
+    new_engine();
+    write_script("t.lua",
+        "vim.theme('o', { colorKey = '#112233' })\n" +
+        "vim.set_theme('o')\n");
+    lua.reload();
+    assertNotNull(ThemeData.active());
+    lua.reload();
+    // The re-apply after reload must keep the theme applied.
+    assertEquals(0xFF112233, ThemeData.active().colorKey.intValue());
   }
 }

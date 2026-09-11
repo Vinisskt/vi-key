@@ -1315,6 +1315,9 @@ public final class KeyEventHandler
     /** Open (or update) a browser page showing the given HTML content, in the
         same window as the help page. Re-calling replaces the content. */
     public void open_page(String title, String html);
+    /** The keyboard theme changed (through a Lua script); the keyboard views
+        should be recreated. Default implementation does nothing. */
+    default public void theme_changed() {}
   }
 
   class Autocapitalisation_callback implements Autocapitalisation.Callback

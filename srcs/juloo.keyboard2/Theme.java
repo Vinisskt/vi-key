@@ -11,6 +11,7 @@ import android.util.AttributeSet;
 
 public class Theme
 {
+  public final int colorKeyboard;
   // Key colors
   public final int colorKey;
   public final int colorKeyActivated;
@@ -49,36 +50,76 @@ public class Theme
   {
     getKeyFont(context); // _key_font will be accessed
     getSpecialFont(context); // _special_font will be accessed
+    // [tv] merges the active Lua override with the styled defaults: fields
+    // from the override win, everything else falls back to the "Gruvbox"
+    // style values read below.
+    ThemeData tv = ThemeData.active();
+    if (tv == null)
+      tv = ThemeData.EMPTY;
     TypedArray s = context.getTheme().obtainStyledAttributes(attrs, R.styleable.keyboard, 0, 0);
-    hasKeyboardGradient = s.hasValue(R.styleable.keyboard_keyboardGradientStart) && s.hasValue(R.styleable.keyboard_keyboardGradientEnd);
-    keyboardGradientStart = s.getColor(R.styleable.keyboard_keyboardGradientStart, 0);
-    keyboardGradientEnd = s.getColor(R.styleable.keyboard_keyboardGradientEnd, 0);
-    colorKey = s.getColor(R.styleable.keyboard_colorKey, 0);
-    colorKeyActivated = s.getColor(R.styleable.keyboard_colorKeyActivated, 0);
-    colorKeyAction = s.getColor(R.styleable.keyboard_colorKeyAction, colorKey);
-    colorKeySpaceBar = s.getColor(R.styleable.keyboard_colorKeySpaceBar, colorKey);
-    // colorKeyboard = s.getColor(R.styleable.keyboard_colorKeyboard, 0);
-    colorNavBar = s.getColor(R.styleable.keyboard_navigationBarColor, 0);
-    isLightNavBar = s.getBoolean(R.styleable.keyboard_windowLightNavigationBar, false);
-    labelColor = s.getColor(R.styleable.keyboard_colorLabel, 0);
-    activatedColor = s.getColor(R.styleable.keyboard_colorLabelActivated, 0);
-    pressedColor = s.getColor(R.styleable.keyboard_colorLabelPressed, labelColor);
-    lockedColor = s.getColor(R.styleable.keyboard_colorLabelLocked, 0);
-    subLabelColor = s.getColor(R.styleable.keyboard_colorSubLabel, 0);
-    secondaryLabelColor = adjustLight(labelColor,
-        s.getFloat(R.styleable.keyboard_secondaryDimming, 0.25f));
-    greyedLabelColor = adjustLight(labelColor,
-        s.getFloat(R.styleable.keyboard_greyedDimming, 0.5f));
-    keyBorderRadius = s.getDimension(R.styleable.keyboard_keyBorderRadius, 0);
-    keyBorderWidth = s.getDimension(R.styleable.keyboard_keyBorderWidth, 0);
-    keyBorderWidthActivated = s.getDimension(R.styleable.keyboard_keyBorderWidthActivated, 0);
-    keyBorderWidthAction = s.getDimension(R.styleable.keyboard_keyBorderWidthAction, 0);
-    keyBorderWidthSpaceBar = s.getDimension(R.styleable.keyboard_keyBorderWidthSpaceBar, 0);
-    keyBorderColorLeft = s.getColor(R.styleable.keyboard_keyBorderColorLeft, colorKey);
-    keyBorderColorTop = s.getColor(R.styleable.keyboard_keyBorderColorTop, colorKey);
-    keyBorderColorRight = s.getColor(R.styleable.keyboard_keyBorderColorRight, colorKey);
-    keyBorderColorBottom = s.getColor(R.styleable.keyboard_keyBorderColorBottom, colorKey);
+    colorKeyboard = tv.value(
+        s.getColor(R.styleable.keyboard_colorKeyboard, 0), tv.colorKeyboard);
+    hasKeyboardGradient = (tv.keyboardGradientStart != null
+        && tv.keyboardGradientEnd != null)
+      || (s.hasValue(R.styleable.keyboard_keyboardGradientStart)
+          && s.hasValue(R.styleable.keyboard_keyboardGradientEnd));
+    keyboardGradientStart = tv.value(
+        s.getColor(R.styleable.keyboard_keyboardGradientStart, 0), tv.keyboardGradientStart);
+    keyboardGradientEnd = tv.value(
+        s.getColor(R.styleable.keyboard_keyboardGradientEnd, 0), tv.keyboardGradientEnd);
+    colorKey = tv.value(
+        s.getColor(R.styleable.keyboard_colorKey, 0), tv.colorKey);
+    colorKeyActivated = tv.value(
+        s.getColor(R.styleable.keyboard_colorKeyActivated, 0), tv.colorKeyActivated);
+    colorKeyAction = tv.value(
+        s.getColor(R.styleable.keyboard_colorKeyAction, colorKey), tv.colorKeyAction);
+    colorKeySpaceBar = tv.value(
+        s.getColor(R.styleable.keyboard_colorKeySpaceBar, colorKey), tv.colorKeySpaceBar);
+    colorNavBar = tv.value(
+        s.getColor(R.styleable.keyboard_navigationBarColor, 0), tv.navBarColor);
+    isLightNavBar = tv.value(
+        s.getBoolean(R.styleable.keyboard_windowLightNavigationBar, false), tv.lightNavBar);
+    labelColor = tv.value(
+        s.getColor(R.styleable.keyboard_colorLabel, 0), tv.labelColor);
+    activatedColor = tv.value(
+        s.getColor(R.styleable.keyboard_colorLabelActivated, 0), tv.labelActivated);
+    pressedColor = tv.value(
+        s.getColor(R.styleable.keyboard_colorLabelPressed, labelColor), tv.labelPressed);
+    lockedColor = tv.value(
+        s.getColor(R.styleable.keyboard_colorLabelLocked, 0), tv.labelLocked);
+    subLabelColor = tv.value(
+        s.getColor(R.styleable.keyboard_colorSubLabel, 0), tv.subLabelColor);
+    float sec_dim = s.getFloat(R.styleable.keyboard_secondaryDimming, 0.25f);
+    float grey_dim = s.getFloat(R.styleable.keyboard_greyedDimming, 0.5f);
+    sec_dim = tv.value(sec_dim, tv.secondaryDimming);
+    grey_dim = tv.value(grey_dim, tv.greyedDimming);
+    secondaryLabelColor = adjustLight(labelColor, sec_dim);
+    greyedLabelColor = adjustLight(labelColor, grey_dim);
+    float density = context.getResources().getDisplayMetrics().density;
+    keyBorderRadius = dp_value(s, R.styleable.keyboard_keyBorderRadius, 0, tv, tv.keyBorderRadius, density);
+    keyBorderWidth = dp_value(s, R.styleable.keyboard_keyBorderWidth, 0, tv, tv.keyBorderWidth, density);
+    keyBorderWidthActivated = dp_value(s, R.styleable.keyboard_keyBorderWidthActivated, 0, tv, tv.keyBorderWidthActivated, density);
+    keyBorderWidthAction = dp_value(s, R.styleable.keyboard_keyBorderWidthAction, 0, tv, tv.keyBorderWidthAction, density);
+    keyBorderWidthSpaceBar = dp_value(s, R.styleable.keyboard_keyBorderWidthSpaceBar, 0, tv, tv.keyBorderWidthSpaceBar, density);
+    keyBorderColorLeft = tv.value(
+        s.getColor(R.styleable.keyboard_keyBorderColorLeft, colorKey), tv.keyBorderColorLeft);
+    keyBorderColorTop = tv.value(
+        s.getColor(R.styleable.keyboard_keyBorderColorTop, colorKey), tv.keyBorderColorTop);
+    keyBorderColorRight = tv.value(
+        s.getColor(R.styleable.keyboard_keyBorderColorRight, colorKey), tv.keyBorderColorRight);
+    keyBorderColorBottom = tv.value(
+        s.getColor(R.styleable.keyboard_keyBorderColorBottom, colorKey), tv.keyBorderColorBottom);
     s.recycle();
+  }
+
+  /** A dimension attribute value (in px), or the Lua override converted from
+      dp to px when present. */
+  static float dp_value(TypedArray s, int index, float def, ThemeData tv,
+      Float override, float density)
+  {
+    if (override != null)
+      return override.floatValue() * density;
+    return s.getDimension(index, def);
   }
 
   /** Interpolate the 'value' component toward its opposite by 'alpha'. */

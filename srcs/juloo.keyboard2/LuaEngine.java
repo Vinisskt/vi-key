@@ -61,6 +61,12 @@ import org.luaj.vm2.lib.jse.JsePlatform;
         [vim.interval].
       - [vim.set_mode(mode)]: switch the keyboard mode ("insert", "normal",
         "scroll"); "scroll" sends DPAD events for j/k, useful to scroll lists.
+      - [vim.theme(name, table)]: register a theme as a table of attribute
+        overrides (colors as "#rrggbb", "#aarrggbb" or numbers; dimensions in
+        dp). Unset attributes keep the built-in "Gruvbox" value.
+      - [vim.set_theme(name)]: apply a registered theme ("" or "gruvbox"
+        restores the built-in theme). The keyboard is re-rendered right away.
+      - [vim.current_theme()]: the name of the applied theme, or "gruvbox".
     Positions are relative to the beginning of the text returned by
     [vim.get_text()]. */
 final class LuaEngine
@@ -70,6 +76,8 @@ final class LuaEngine
   final Globals _globals;
   final Map<String, LuaValue> _commands = new HashMap<String, LuaValue>();
   final Map<Integer, TimerHandle> _intervals = new HashMap<Integer, TimerHandle>();
+  final Map<String, ThemeData> _themes = new HashMap<String, ThemeData>();
+  String _active_theme_name = null;
   int _next_interval_id = 1;
 
   LuaEngine(KeyEventHandler handler, Context appCtx)
@@ -141,6 +149,7 @@ final class LuaEngine
     }
     _commands.clear();
     clear_intervals();
+    _themes.clear();
     File init_file = new File(_lua_dir, "init.lua");
     if (init_file.exists() && init_file.isFile())
     {
@@ -150,6 +159,7 @@ final class LuaEngine
       // re-runs every module.
       _globals.get("package").set("loaded", new LuaTable());
       load_script(init_file);
+      apply_active_theme();
       return;
     }
     List<File> files = new ArrayList<File>();
@@ -158,6 +168,21 @@ final class LuaEngine
     Collections.sort(files);
     for (File f : files)
       load_script(f);
+    apply_active_theme();
+  }
+
+  /** Re-apply the active theme when its definition is still registered after a
+      [reload] (scripts may re-run [vim.theme]). Keep the previous override
+      otherwise so the keyboard does not change appearance on a plain reload. */
+  void apply_active_theme()
+  {
+    if (_active_theme_name == null)
+      return;
+    ThemeData td = _themes.get(_active_theme_name);
+    if (td == null)
+      return;
+    ThemeData.set_active(td);
+    _handler._recv.theme_changed();
   }
 
   /** Extend [package.path] so that Lua modules loaded from [init.lua] can be
@@ -461,6 +486,60 @@ final class LuaEngine
         }
         _handler._vim.set_mode(m);
         return LuaValue.NONE;
+      }
+    });
+    vim.set("theme", new VarArgFunction() {
+      @Override public Varargs invoke(Varargs args) {
+        String name = args.arg1().tojstring();
+        if (name.isEmpty())
+          return LuaValue.NONE;
+        ThemeData td;
+        try
+        {
+          td = ThemeData.from_lua_table(args.arg(2));
+        }
+        catch (Exception ex)
+        {
+          flash("lua theme: " + ex.getMessage());
+          return LuaValue.NONE;
+        }
+        if (td == null)
+        {
+          flash("theme: expected a table of attributes");
+          return LuaValue.NONE;
+        }
+        _themes.put(name.toLowerCase(Locale.ROOT), td);
+        return LuaValue.NONE;
+      }
+    });
+    vim.set("set_theme", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue name) {
+        String n = name.tojstring().toLowerCase(Locale.ROOT);
+        if (n.isEmpty() || n.equals("gruvbox"))
+        {
+          // Back to the built-in Gruvbox style.
+          _active_theme_name = n.isEmpty() ? null : n;
+          ThemeData.set_active(null);
+          _handler._recv.theme_changed();
+          return LuaValue.NONE;
+        }
+        ThemeData td = _themes.get(n);
+        if (td == null)
+        {
+          flash("no theme " + n);
+          return LuaValue.NONE;
+        }
+        _active_theme_name = n;
+        ThemeData.set_active(td);
+        _handler._recv.theme_changed();
+        return LuaValue.NONE;
+      }
+    });
+    vim.set("current_theme", new ZeroArgFunction() {
+      @Override public LuaValue call() {
+        return (_active_theme_name == null)
+          ? LuaValue.valueOf("gruvbox")
+          : LuaValue.valueOf(_active_theme_name);
       }
     });
     vim.set("interval", new VarArgFunction() {

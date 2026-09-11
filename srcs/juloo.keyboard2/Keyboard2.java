@@ -35,6 +35,9 @@ public class Keyboard2 extends InputMethodService
   private ViewGroup _keyboard_container_view;
   private Keyboard2View _keyboard_layout_view;
   private TextView _vim_status;
+  /** The [ThemeData.revision] the current views were built with; a Lua theme
+      change bumps the revision and triggers a rebuild of the views. */
+  private int _view_revision = -1;
   private KeyEventHandler _keyeventhandler;
   /** If not 'null', the layout to use instead of [_config.current_layout]. */
   private KeyboardData _currentSpecialLayout;
@@ -149,6 +152,13 @@ public class Keyboard2 extends InputMethodService
     _keyboard_container_view = (ViewGroup)inflate_view(R.layout.keyboard);
     _keyboard_layout_view = (Keyboard2View)_keyboard_container_view.findViewById(R.id.keyboard_view);
     _vim_status = (TextView)_keyboard_container_view.findViewById(R.id.vim_status);
+    // The root background is themed at runtime as well so that a Lua theme can
+    // override [colorKeyboard] (the inflated [?attr/colorKeyboard] only knows
+    // the built-in style).
+    int bg = _keyboard_layout_view.theme_color_keyboard();
+    if (bg != 0)
+      _keyboard_container_view.setBackgroundColor(bg);
+    _view_revision = ThemeData.revision();
   }
 
   InputMethodManager get_imm()
@@ -179,13 +189,24 @@ public class Keyboard2 extends InputMethodService
   {
     int prev_theme = _config.theme;
     _config.refresh(getResources(), _foldStateTracker.isUnfolded());
-    // Refreshing the theme config requires re-creating the views
     if (prev_theme != _config.theme)
     {
+      // The built-in style changed (settings): re-create the views.
       create_keyboard_view();
       _emojiPane = null;
       _clipboard_pane = null;
       setInputView(_keyboard_container_view);
+    }
+    else if (_view_revision != ThemeData.revision())
+    {
+      // A Lua theme override ([vim.set_theme]) bumped the revision: retheme the
+      // existing views in place. Recreating the IME views at runtime can crash
+      // the process, so only the paints are rebuilt.
+      _view_revision = ThemeData.revision();
+      _keyboard_layout_view.retheme();
+      int bg = _keyboard_layout_view.theme_color_keyboard();
+      if (bg != 0)
+        _keyboard_container_view.setBackgroundColor(bg);
     }
     // Set keyboard background opacity
     Drawable bg = _keyboard_container_view.getBackground().mutate();
@@ -523,6 +544,12 @@ public class Keyboard2 extends InputMethodService
     public void open_page(String title, String html)
     {
       BrowserActivity.open_page(Keyboard2.this, title, html);
+    }
+
+    @Override
+    public void theme_changed()
+    {
+      refresh_config();
     }
 
     public String provide_stateful_key_symbol(KeyValue.Stateful q)
