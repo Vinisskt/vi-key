@@ -143,8 +143,8 @@ final class SearchBar
     int base = et.startOffset;
     if (_origin < 0)
       _origin = base + et.selectionStart;
-    String lower = text.toLowerCase();
-    String lq = q.toLowerCase();
+    String lower = text.toLowerCase(java.util.Locale.ROOT);
+    String lq = q.toLowerCase(java.util.Locale.ROOT);
     ArrayList<Integer> matches = new ArrayList<Integer>();
     int from = 0;
     while (true)

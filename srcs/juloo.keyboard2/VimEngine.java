@@ -159,6 +159,9 @@ public final class VimEngine
   final HashMap<Character,String> _registers = new HashMap<Character,String>();
   String _unnamed_register = "";
   char _cmd_register = 0;
+  /** [true] when an uppercase register (["A]) was selected: the next yank
+      appends to the register instead of overwriting it (vim semantics). */
+  boolean _register_append = false;
   boolean _register_pending = false;
 
   VimEngine(KeyEventHandler handler)
@@ -177,6 +180,7 @@ public final class VimEngine
     _pending_g = false;
     _count.setLength(0);
     _cmd_register = 0;
+    _register_append = false;
     _register_pending = false;
     _handler.get_handler().removeCallbacks(_jk_delay);
     _search.reset();
@@ -383,12 +387,15 @@ public final class VimEngine
     if (_register_pending)
     {
       _register_pending = false;
+      boolean uppercase = Character.isUpperCase(c);
       char reg = Character.toLowerCase(c);
       if (is_register_name(reg))
       {
         _cmd_register = reg;
+        _register_append = uppercase;
         return true;
       }
+      _clear_register();
       // Invalid register name: ignore it and process [c] normally.
     }
     if (c == 'P')
@@ -470,7 +477,6 @@ public final class VimEngine
       case 'i': _clear_count(); set_mode(MODE_INSERT); return true;
       case 'a': _clear_count(); _move_l(1); set_mode(MODE_INSERT); return true;
       case 'o': open_line_below(); return true;
-      case 'O': open_line_above(); return true;
       case 'h': _move_h(count()); _clear_count(); return true;
       case 'j': _move_j(count()); _clear_count(); return true;
       case 'k': _move_k(count()); _clear_count(); return true;
@@ -732,10 +738,17 @@ public final class VimEngine
     TextData td = get_text();
     if (td == null)
       return;
+    if (_count.length() == 0)
+    {
+      // Plain 'G': go to the end of the document.
+      set_sel(td.base + td.n);
+      return;
+    }
     int n = count();
     if (n <= 1)
     {
-      set_sel(td.base + td.n);
+      // '1G': go to the first line of the document.
+      set_sel(td.base);
       return;
     }
     // Move to the start of the [n]-th line. Lines are separated by '\n'.
@@ -892,6 +905,13 @@ public final class VimEngine
     return c >= 'a' && c <= 'z';
   }
 
+  /** Clear the selected register without touching its contents. */
+  void _clear_register()
+  {
+    _cmd_register = 0;
+    _register_append = false;
+  }
+
   /** Text to paste with [p]/[P]: the selected register, the unnamed register
       (last yank/delete) or, as a fallback, the system clipboard. */
   String register_text()
@@ -899,7 +919,7 @@ public final class VimEngine
     if (_cmd_register != 0)
     {
       String s = _registers.get(_cmd_register);
-      _cmd_register = 0;
+      _clear_register();
       if (s != null)
         return s;
     }
@@ -911,14 +931,17 @@ public final class VimEngine
 
   /** Store [text] in the selected register and in the unnamed register,
       mirroring vim: yanking to a named register also updates the unnamed
-      register. Also updates the system clipboard so the text can be pasted
-      anywhere. */
+      register. An uppercase register (["A]) appends to the register instead
+      of overwriting it. Also updates the system clipboard so the text can be
+      pasted anywhere. */
   void yank_to_register(String text)
   {
     if (_cmd_register != 0)
     {
-      _registers.put(_cmd_register, text);
-      _cmd_register = 0;
+      String old = _registers.get(_cmd_register);
+      String value = (_register_append && old != null) ? old + text : text;
+      _registers.put(_cmd_register, value);
+      _clear_register();
     }
     _unnamed_register = text;
     _handler.set_clipboard_text(text);
@@ -930,8 +953,10 @@ public final class VimEngine
   {
     if (_cmd_register != 0)
     {
-      _registers.put(_cmd_register, text);
-      _cmd_register = 0;
+      String old = _registers.get(_cmd_register);
+      String value = (_register_append && old != null) ? old + text : text;
+      _registers.put(_cmd_register, value);
+      _clear_register();
     }
     _unnamed_register = text;
   }
@@ -956,48 +981,59 @@ public final class VimEngine
 
   void yank_line(int count)
   {
-    for (int i = 0; i < count; i++)
+    TextData td = get_text();
+    if (td == null)
+      return;
+    int rel = td.cursor_rel;
+    int line_start = rel;
+    while (line_start > 0 && td.text.charAt(line_start - 1) != '\n')
+      line_start--;
+    // The yank goes from the start of the current line up to the end of the
+    // [count]-th line, including the line endings (vim: 2yy copies two lines).
+    int end = rel;
+    int lines = 0;
+    while (end < td.n && lines < count)
     {
-      TextData td = get_text();
-      if (td == null)
-        return;
-      int rel = td.cursor_rel;
-      int line_start = rel;
-      while (line_start > 0 && td.text.charAt(line_start - 1) != '\n')
-        line_start--;
-      int line_end = rel;
-      while (line_end < td.n && td.text.charAt(line_end) != '\n')
-        line_end++;
-      yank_to_register(td.text.substring(line_start, line_end));
+      if (td.text.charAt(end) == '\n')
+        lines++;
+      end++;
     }
+    yank_to_register(td.text.substring(line_start, end));
   }
 
   void yank_word(int count)
   {
-    for (int i = 0; i < count; i++)
+    TextData td = get_text();
+    if (td == null)
+      return;
+    // Advance past [count] words (word + trailing separators each).
+    int i = td.cursor_rel;
+    for (int w = 0; w < count; w++)
     {
-      TextData td = get_text();
-      if (td == null)
-        return;
-      int end = word_start_after(td.text, td.cursor_rel);
-      if (end <= td.cursor_rel)
-        return;
-      yank_to_register(td.text.substring(td.cursor_rel, end));
+      while (i < td.n && is_word_char(td.text.charAt(i)))
+        i++;
+      while (i < td.n && !is_word_char(td.text.charAt(i)))
+        i++;
     }
+    if (i > td.cursor_rel)
+      yank_to_register(td.text.substring(td.cursor_rel, i));
   }
 
   void yank_word_end(int count)
   {
-    for (int i = 0; i < count; i++)
+    TextData td = get_text();
+    if (td == null)
+      return;
+    // Advance past [count] words (word ends, no trailing separators).
+    int i = td.cursor_rel;
+    for (int w = 0; w < count; w++)
     {
-      TextData td = get_text();
-      if (td == null)
+      int end = word_end_forward(td.text, i);
+      if (end <= i)
         return;
-      int end = word_end_forward(td.text, td.cursor_rel);
-      if (end <= td.cursor_rel)
-        return;
-      yank_to_register(td.text.substring(td.cursor_rel, end));
+      i = end;
     }
+    yank_to_register(td.text.substring(td.cursor_rel, i));
   }
 
   void yank_col_start()

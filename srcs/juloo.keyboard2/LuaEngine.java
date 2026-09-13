@@ -316,9 +316,12 @@ final class LuaEngine
       missing) and reload all scripts. */
   void save_script(String name, String content)
   {
-    if (!name.endsWith(".lua"))
-      name += ".lua";
-    File file = new File(_lua_dir, name);
+    File file = script_file(name);
+    if (file == null)
+    {
+      flash("lua: invalid script name");
+      return;
+    }
     try
     {
       if (!_lua_dir.isDirectory() && !_lua_dir.mkdirs())
@@ -333,7 +336,7 @@ final class LuaEngine
         out.close();
       }
       reload();
-      flash("saved " + name);
+      flash("saved " + file.getName());
     }
     catch (IOException ex)
     {
@@ -343,16 +346,28 @@ final class LuaEngine
 
   void delete_script(String name)
   {
-    if (!name.endsWith(".lua"))
-      name += ".lua";
-    File file = new File(_lua_dir, name);
-    if (file.exists() && file.delete())
+    File file = script_file(name);
+    if (file != null && file.exists() && file.delete())
     {
       reload();
-      flash("deleted " + name);
+      flash("deleted " + file.getName());
     }
     else
       flash("no script " + name);
+  }
+
+  /** The script file for [name], or [null] when the name is not a plain
+      filename (path separators and "."/".." are rejected so scripts can't
+      escape the scripts directory). */
+  File script_file(String name)
+  {
+    if (!name.endsWith(".lua"))
+      name += ".lua";
+    String base = name.substring(0, name.length() - 4);
+    if (base.isEmpty() || base.equals(".") || base.equals("..")
+        || base.indexOf('/') >= 0 || base.indexOf('\\') >= 0)
+      return null;
+    return new File(_lua_dir, name);
   }
 
   /** Names of the currently registered commands, sorted. */
@@ -431,9 +446,19 @@ final class LuaEngine
         int start = args.arg1().toint();
         int end = args.arg(2).toint();
         String text = args.arg(3).tojstring();
-        int base = current_base();
-        if (end >= start && base >= 0)
-          _handler.replace_surrounding_text_abs(base + start, end - start, text);
+        if (end < start)
+          return LuaValue.NONE;
+        ExtractedText et = current_extracted();
+        if (et == null)
+          return LuaValue.NONE;
+        int base = et.startOffset;
+        int len = (et.text == null) ? 0 : et.text.length();
+        // Clamp the range to the extracted text.
+        if (start < 0) start = 0;
+        if (end > len) end = len;
+        if (start >= len)
+          return LuaValue.NONE;
+        _handler.replace_surrounding_text_abs(base + start, end - start, text);
         return LuaValue.NONE;
       }
     });

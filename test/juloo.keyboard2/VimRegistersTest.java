@@ -25,6 +25,39 @@ public class VimRegistersTest extends VimTestBase
     press_escape();
     press("y");
     press("y");
+    assertEquals("hello world\n", _handler._vim._unnamed_register);
+  }
+
+  @Test
+  public void yy_count_copies_several_lines()
+  {
+    buffer("aa\nbb\ncc\ndd", 0);
+    press_escape();
+    press("3");
+    press("y");
+    press("y");
+    assertEquals("aa\nbb\ncc\n", _handler._vim._unnamed_register);
+  }
+
+  @Test
+  public void yw_count_copies_several_words()
+  {
+    buffer("hello world foo bar", 0);
+    press_escape();
+    press("2");
+    press("y");
+    press("w");
+    assertEquals("hello world ", _handler._vim._unnamed_register);
+  }
+
+  @Test
+  public void ye_count_copies_word_ends_without_separators()
+  {
+    buffer("hello world foo", 0);
+    press_escape();
+    press("2");
+    press("y");
+    press("e");
     assertEquals("hello world", _handler._vim._unnamed_register);
   }
 
@@ -55,7 +88,7 @@ public class VimRegistersTest extends VimTestBase
     press("y");
     press("y");
     press("P");
-    assertEquals("hello world" + "hello world\nfoo bar", _conn.text());
+    assertEquals("hello world\n" + "hello world\nfoo bar", _conn.text());
   }
 
   @Test
@@ -66,8 +99,24 @@ public class VimRegistersTest extends VimTestBase
     quote('a');
     press("y");
     press("y");
-    assertEquals("aaaa", _handler._vim._registers.get('a'));
-    assertEquals("aaaa", _handler._vim._unnamed_register);
+    assertEquals("aaaa\n", _handler._vim._registers.get('a'));
+    assertEquals("aaaa\n", _handler._vim._unnamed_register);
+  }
+
+  @Test
+  public void uppercase_register_appends_instead_of_overwriting()
+  {
+    buffer("aa\nbb", 0);
+    press_escape();
+    quote('a');
+    press("y");
+    press("y");
+    press("2");
+    press("G");
+    quote('A');
+    press("y");
+    press("y");
+    assertEquals("aa\nbb", _handler._vim._registers.get('a'));
   }
 
   @Test
@@ -86,7 +135,7 @@ public class VimRegistersTest extends VimTestBase
     assertEquals("bbbb", _handler._vim._registers.get('b'));
     quote('a');
     press("P");
-    assertEquals("aaaa\naaaa" + "bbbb", _conn.text());
+    assertEquals("aaaa\naaaa\n" + "bbbb", _conn.text());
   }
 
   @Test
@@ -109,5 +158,35 @@ public class VimRegistersTest extends VimTestBase
     press_escape();
     press("x");
     assertEquals("a", _handler._vim._unnamed_register);
+  }
+
+  @Test
+  public void y0_copies_to_column_start()
+  {
+    buffer("hello world", 3);
+    press_escape();
+    press("y");
+    press("0");
+    assertEquals("hel", _handler._vim._unnamed_register);
+  }
+
+  @Test
+  public void y_dollar_copies_to_column_end()
+  {
+    buffer("hello world", 3);
+    press_escape();
+    press("y");
+    press("$");
+    assertEquals("lo world", _handler._vim._unnamed_register);
+  }
+
+  @Test
+  public void p_pastes_before_the_cursor()
+  {
+    buffer("hello", 0);
+    press_escape();
+    press("x");
+    press("p");
+    assertEquals("hello", _conn.text());
   }
 }

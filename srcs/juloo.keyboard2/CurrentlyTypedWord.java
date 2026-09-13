@@ -133,8 +133,8 @@ public final class CurrentlyTypedWord
     int len = _w.length();
     int c = len + _w_cursor;
     _w.delete(Math.max(c - remove_before, 0), Math.max(Math.min(c + remove_after, len), 0));
-    _cursor -= remove_before;
-    _w_cursor -= remove_after;
+    _cursor = Math.max(0, _cursor - remove_before);
+    _w_cursor = Math.max(_w_cursor - remove_after, -_w.length());
     callback();
   }
 

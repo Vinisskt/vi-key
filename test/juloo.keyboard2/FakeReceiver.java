@@ -50,7 +50,8 @@ public final class FakeReceiver implements KeyEventHandler.IReceiver
   @Override public void theme_changed() { themeChanges++; }
 
   public String lastStatus() { return vimStatuses.isEmpty() ? null : vimStatuses.get(vimStatuses.size() - 1); }
-  public boolean lastStatusIn(String s) { return s.contains(s); }
+  public boolean lastStatusIn(String s)
+  { String last = lastStatus(); return last != null && last.contains(s); }
   public String lastHint() { return vimHints.isEmpty() ? null : vimHints.get(vimHints.size() - 1); }
 
   public static boolean is_normal(String lastStatus)

@@ -91,6 +91,17 @@ public class EditorConfigTest
   }
 
   @Test
+  public void null_package_name_does_not_crash_on_refresh()
+  {
+    EditorConfig ec = new EditorConfig();
+    EditorInfo info = new EditorInfo();
+    info.inputType = InputType.TYPE_CLASS_TEXT;
+    info.packageName = null;
+    ec.refresh(info, null);
+    assertFalse(ec.should_move_cursor_force_fallback);
+  }
+
+  @Test
   public void caps_mode_and_initial_enabled()
   {
     EditorConfig ec = new EditorConfig();

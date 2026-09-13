@@ -296,6 +296,75 @@ public class LuaEngineTest extends VimTestBase
     assertTrue(_receiver.lastStatus().startsWith("5,5"));
   }
 
+  @Test
+  public void replace_with_negative_start_clamps_to_zero()
+  {
+    new_engine();
+    write_script("a.lua",
+        "vim.register('r', function() vim.replace(-5, 2, 'X') vim.status('ok') end)");
+    lua.reload();
+    buffer("hello", 2, 2);
+    lua.execute("r", "");
+    assertTrue(_receiver.lastStatus().startsWith("ok"));
+    assertEquals("Xllo", _conn.text());
+  }
+
+  @Test
+  public void replace_end_beyond_text_clamps_to_length()
+  {
+    new_engine();
+    write_script("a.lua",
+        "vim.register('r', function() vim.replace(0, 100, 'Z') vim.status('ok') end)");
+    lua.reload();
+    buffer("hello", 2, 2);
+    lua.execute("r", "");
+    assertEquals("Z", _conn.text());
+  }
+
+  @Test
+  public void replace_reversed_range_is_ignored()
+  {
+    new_engine();
+    write_script("a.lua",
+        "vim.register('r', function() vim.replace(3, 1, '?') vim.status('ok') end)");
+    lua.reload();
+    buffer("hello", 2, 2);
+    lua.execute("r", "");
+    assertTrue(_receiver.lastStatus().startsWith("ok"));
+    assertEquals("hello", _conn.text());
+  }
+
+  @Test
+  public void replace_start_beyond_text_is_a_noop()
+  {
+    new_engine();
+    write_script("a.lua",
+        "vim.register('r', function() vim.replace(10, 20, 'Z') vim.status('ok') end)");
+    lua.reload();
+    buffer("hello", 2, 2);
+    lua.execute("r", "");
+    assertTrue(_receiver.lastStatus().startsWith("ok"));
+    assertEquals("hello", _conn.text());
+  }
+
+  @Test
+  public void save_script_rejects_path_separators()
+  {
+    new_engine();
+    lua.save_script("../evil", "vim.register('x', function() end)");
+    assertTrue(_receiver.lastStatus().contains("invalid script name"));
+    assertFalse(new File(dir, "evil.lua").exists());
+    assertFalse(new File(dir.getAbsoluteFile().getParentFile(), "evil.lua").exists());
+  }
+
+  @Test
+  public void delete_script_rejects_parent_reference()
+  {
+    new_engine();
+    lua.delete_script("..");
+    assertTrue(_receiver.lastStatus().contains("no script"));
+  }
+
   /** A receiver whose current input connection is always [null]. */
   static final class NoConnReceiver implements KeyEventHandler.IReceiver
   {

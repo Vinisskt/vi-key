@@ -164,6 +164,20 @@ public class CurrentlyTypedWordTest
   }
 
   @Test
+  public void remove_more_than_available_clamps_the_cursor()
+  {
+    start_word();
+    _word.typed("he");
+    _word.remove_surrounding_text(10, 0);
+    assertEquals("", _word.get());
+    assertEquals(0, _word._cursor);
+    assertEquals(0, _word.cursor_relative());
+    _word.typed("x");
+    assertEquals(1, _word._cursor);
+    assertEquals("x", _word.get());
+  }
+
+  @Test
   public void del_key_event_is_a_backspace()
   {
     start_word();

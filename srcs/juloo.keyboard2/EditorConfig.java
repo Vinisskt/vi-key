@@ -121,7 +121,8 @@ public final class EditorConfig
           InputType.TYPE_TEXT_VARIATION_PASSWORD) != 0)
       return true;
     // Godot editor: Doesn't handle setSelection() but returns true.
-    return info.packageName.startsWith("org.godotengine.editor");
+    return info.packageName != null
+      && info.packageName.startsWith("org.godotengine.editor");
   }
 
   /** Whether the caps state should be updated when input starts. [inputType]

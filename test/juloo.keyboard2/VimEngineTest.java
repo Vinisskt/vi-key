@@ -116,6 +116,39 @@ public class VimEngineTest extends VimTestBase
     assertEquals(3, _conn.selStart());
   }
 
+  @Test
+  public void one_G_moves_to_first_line()
+  {
+    buffer("aa\nbb\ncc", 3);
+    press_escape();
+    press("1");
+    press("G");
+    assertEquals(0, _conn.selStart());
+  }
+
+  // ---- Undo / redo ----------------------------------------------------------
+
+  @Test
+  public void u_triggers_undo_context_action()
+  {
+    buffer("abc", 0);
+    press_escape();
+    press("x");
+    press("x");
+    press("u");
+    assertTrue(_conn.contextActions.contains(android.R.id.undo));
+  }
+
+  @Test
+  public void ctrl_r_triggers_redo_context_action()
+  {
+    buffer("abc", 0);
+    press_escape();
+    press("u");
+    press_with_mods("r", Pointers.Modifiers.EMPTY.with_extra_mod(TestUtils.key("ctrl")));
+    assertTrue(_conn.contextActions.contains(android.R.id.redo));
+  }
+
   // ---- Motions (key events) ---------------------------------------------
 
   @Test
