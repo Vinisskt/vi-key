@@ -24,8 +24,8 @@ android {
     applicationId = "com.vinisskt.vikey"
     minSdk = 21
     targetSdk { version = release(36) }
-    versionCode = 1
-    versionName = "1.0.0-vi"
+    versionCode = 2
+    versionName = "1.1.0-vi"
     resConfigs("en", "pt")
   }
 
