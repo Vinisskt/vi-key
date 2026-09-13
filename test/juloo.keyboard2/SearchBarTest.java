@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.view.inputmethod.InputConnection;
 import java.lang.reflect.Proxy;
@@ -20,7 +20,7 @@ public class SearchBarTest
   public void setup()
   {
     _receiver = new FakeReceiver();
-    _handler = new KeyEventHandler(_receiver, null);
+    _handler = new KeyEventHandler(_receiver);
     _search = new SearchBar(_handler._vim);
     _conn = _receiver.conn;
   }
@@ -170,7 +170,7 @@ public class SearchBarTest
   @Test
   public void find_now_without_connection_returns_zero()
   {
-    _handler = new KeyEventHandler(new NullConnReceiver(), null);
+    _handler = new KeyEventHandler(new NullConnReceiver());
     _search = new SearchBar(_handler._vim);
     _search.begin();
     _search.type('x');
@@ -180,7 +180,7 @@ public class SearchBarTest
   @Test
   public void find_now_when_editor_has_no_text_is_skipped()
   {
-    _handler = new KeyEventHandler(new NullExtractReceiver(), null);
+    _handler = new KeyEventHandler(new NullExtractReceiver());
     _search = new SearchBar(_handler._vim);
     _search.begin();
     _search.type('h');
@@ -203,7 +203,7 @@ public class SearchBarTest
   @Test
   public void select_current_without_connection_is_ignored()
   {
-    _handler = new KeyEventHandler(new NullConnReceiver(), null);
+    _handler = new KeyEventHandler(new NullConnReceiver());
     _search = new SearchBar(_handler._vim);
     _search._matches = new java.util.ArrayList<Integer>();
     _search._matches.add(0);
@@ -246,12 +246,12 @@ public class SearchBarTest
     @Override public android.os.Handler getHandler() { return new android.os.Handler(android.os.Looper.getMainLooper()); }
     @Override public android.content.Context getApplicationContext() { return null; }
     @Override public void set_vim_status(String text, int color) {}
+    @Override public void set_vim_hint(String text) {}
     @Override public boolean is_float_open() { return false; }
     @Override public void toggle_float_panel(String url) {}
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
     @Override public void open_page(String title, String html) {}
-    @Override public void set_suggestions(juloo.keyboard2.suggestions.Suggestions s) {}
   }
 
   /** A receiver whose connection reports no extracted text. */
@@ -275,11 +275,11 @@ public class SearchBarTest
     @Override public android.os.Handler getHandler() { return new android.os.Handler(android.os.Looper.getMainLooper()); }
     @Override public android.content.Context getApplicationContext() { return null; }
     @Override public void set_vim_status(String text, int color) {}
+    @Override public void set_vim_hint(String text) {}
     @Override public boolean is_float_open() { return false; }
     @Override public void toggle_float_panel(String url) {}
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
     @Override public void open_page(String title, String html) {}
-    @Override public void set_suggestions(juloo.keyboard2.suggestions.Suggestions s) {}
   }
 }

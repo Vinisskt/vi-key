@@ -1,7 +1,7 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
-import juloo.keyboard2.KeyModifier;
-import juloo.keyboard2.KeyValue;
+import com.vinisskt.vikey.KeyModifier;
+import com.vinisskt.vikey.KeyValue;
 
 /** Utils to make writing tests easier. */
 public final class TestUtils

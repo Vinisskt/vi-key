@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;

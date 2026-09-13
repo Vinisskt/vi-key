@@ -1,10 +1,11 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -27,6 +28,15 @@ public class LuaEngineTest extends VimTestBase
     }
     lua = new LuaEngine(_handler, dir);
     return lua;
+  }
+
+  @Override
+  @Before
+  public void setup_vim()
+  {
+    super.setup_vim();
+    // The active theme is a static; reset it between tests.
+    ThemeData.set_active(null);
   }
 
   void write_script(String name, String content)
@@ -105,6 +115,59 @@ public class LuaEngineTest extends VimTestBase
     }
     lua.reload();
     assertArrayEquals(new String[] { "extra", "plug", "root" }, lua.command_names());
+  }
+
+  void write_nested_script(String subpath, String content)
+  {
+    try
+    {
+      File f = new File(dir, subpath);
+      f.getParentFile().mkdirs();
+      java.io.FileOutputStream out = new java.io.FileOutputStream(f);
+      out.write(content.getBytes("UTF-8"));
+      out.close();
+    }
+    catch (Exception e)
+    {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Test
+  public void init_lua_requires_plugins_instead_of_loading_flat_files()
+  {
+    new_engine();
+    write_script("init.lua",
+        "require('mod')\n");
+    write_script("unrelated.lua",
+        "vim.register('flat', function() end)");
+    write_nested_script("plugins/mod.lua",
+        "vim.register('mod', function(args) vim.status('mod ' .. args) end)");
+    lua.reload();
+    // Only the commands registered by the required modules exist; unrelated.lua
+    // (flat, non-required) must not be loaded and "init" is not a command.
+    assertArrayEquals(new String[] { "mod" }, lua.command_names());
+    assertTrue(lua.execute("mod", "ok"));
+    assertTrue(_receiver.lastStatus().startsWith("mod ok"));
+  }
+
+  @Test
+  public void interval_and_clear_interval_wired_through_commands()
+  {
+    new_engine();
+    write_script("ivl.lua",
+        "handle = nil\n" +
+        "vim.register('mk', function()\n" +
+        "  handle = vim.interval(1000, function() end)\n" +
+        "end)\n" +
+        "vim.register('stop_ivl', function() vim.clear_interval(handle) end)\n");
+    lua.reload();
+    // Creating and cancelling an interval through the Lua API must not error.
+    assertTrue(lua.execute("mk", ""));
+    assertTrue(lua.execute("stop_ivl", ""));
+    // A reload with live timers cancels them without error.
+    assertTrue(lua.execute("mk", ""));
+    lua.reload();
   }
 
   @Test
@@ -245,12 +308,12 @@ public class LuaEngineTest extends VimTestBase
     @Override public android.os.Handler getHandler() { return new android.os.Handler(android.os.Looper.getMainLooper()); }
     @Override public android.content.Context getApplicationContext() { return null; }
     @Override public void set_vim_status(String text, int color) { statuses.add(text + "\u0000" + color); }
+    @Override public void set_vim_hint(String text) {}
     @Override public boolean is_float_open() { return false; }
     @Override public void toggle_float_panel(String url) {}
     @Override public void close_float_panel() {}
     @Override public void open_help() {}
     @Override public void open_page(String title, String html) {}
-    @Override public void set_suggestions(juloo.keyboard2.suggestions.Suggestions s) {}
     String lastStatus() { return statuses.isEmpty() ? null : statuses.get(statuses.size() - 1); }
   }
 
@@ -258,7 +321,7 @@ public class LuaEngineTest extends VimTestBase
   public void get_sel_without_connection_returns_none()
   {
     NoConnReceiver recv = new NoConnReceiver();
-    _handler = new KeyEventHandler(recv, null);
+    _handler = new KeyEventHandler(recv);
     new_engine();
     write_script("a.lua",
         "vim.register('sel', function() vim.status(vim.get_sel()) end)");
@@ -271,7 +334,7 @@ public class LuaEngineTest extends VimTestBase
   public void get_text_without_connection_returns_empty()
   {
     NoConnReceiver recv = new NoConnReceiver();
-    _handler = new KeyEventHandler(recv, null);
+    _handler = new KeyEventHandler(recv);
     new_engine();
     write_script("a.lua",
         "vim.register('txt', function() vim.status('[' .. vim.get_text() .. ']') end)");
@@ -438,10 +501,103 @@ public class LuaEngineTest extends VimTestBase
   public void replace_with_null_extract_returns_base_minus_one()
   {
     new_engine();
-    _handler = new KeyEventHandler(new NoConnReceiver(), null);
+    _handler = new KeyEventHandler(new NoConnReceiver());
     lua = new LuaEngine(_handler, dir);
     lua.save_script("b", "vim.register('rep', function() vim.replace(1, 3, 'Z') end)");
     lua.execute("rep", "");
     // replace(1, 3, "Z") with base=-1: the guard rejects the replacement.
+  }
+
+  @Test
+  public void theme_registers_and_set_theme_applies()
+  {
+    new_engine();
+    write_script("t.lua",
+        "vim.theme('ocean', { colorKeyboard = '#101418', colorKey = '#151a22', colorLabel = '#cdd6f4' })\n" +
+        "vim.set_theme('ocean')\n" +
+        "vim.register('theme_name', function() vim.status(vim.current_theme()) end)\n");
+    lua.reload();
+    ThemeData td = ThemeData.active();
+    assertNotNull(td);
+    assertEquals(0xFF101418, td.colorKeyboard.intValue());
+    assertEquals(0xFF151A22, td.colorKey.intValue());
+    assertEquals(0xFFCDD6F4, td.labelColor.intValue());
+    assertNull(td.colorKeyActivated);
+    assertEquals(2, _receiver.themeChanges);
+    lua.execute("theme_name", "");
+    assertTrue(_receiver.lastStatus().startsWith("ocean"));
+  }
+
+  @Test
+  public void theme_accepts_numeric_and_rgba_colors()
+  {
+    new_engine();
+    write_script("t.lua",
+        "vim.theme('num', { colorKey = 0xFF282828, colorSubLabel = '#80d5c4a1' })\n" +
+        "vim.set_theme('num')\n");
+    lua.reload();
+    ThemeData td = ThemeData.active();
+    assertNotNull(td);
+    assertEquals(0xFF282828, td.colorKey.intValue());
+    assertEquals(0x80D5C4A1, td.subLabelColor.intValue());
+  }
+
+  @Test
+  public void set_theme_with_unknown_name_flashes()
+  {
+    new_engine();
+    write_script("a.lua", "vim.set_theme('nope')");
+    lua.reload();
+    assertTrue(_receiver.lastStatus().startsWith("no theme "));
+    assertNull(ThemeData.active());
+    assertEquals(0, _receiver.themeChanges);
+  }
+
+  @Test
+  public void set_theme_restores_default_on_empty_string()
+  {
+    new_engine();
+    write_script("t.lua",
+        "vim.theme('o', { colorLabel = '#ffffff' })\n" +
+        "vim.set_theme('o')\n" +
+        "vim.set_theme('')\n");
+    lua.reload();
+    assertNull(ThemeData.active());
+    assertEquals(2, _receiver.themeChanges);
+    lua.execute("t", "");
+  }
+
+  @Test
+  public void theme_flashes_on_invalid_color()
+  {
+    new_engine();
+    write_script("a.lua", "vim.theme('bad', { colorKey = 'not-a-color' })");
+    lua.reload();
+    assertTrue(_receiver.lastStatus().startsWith("lua theme: invalid color"));
+    assertNull(ThemeData.active());
+  }
+
+  @Test
+  public void theme_with_non_table_second_argument_is_rejected()
+  {
+    new_engine();
+    write_script("a.lua", "vim.theme('bad', 42)");
+    lua.reload();
+    assertTrue(_receiver.lastStatus().startsWith("theme: expected a table"));
+    assertNull(ThemeData.active());
+  }
+
+  @Test
+  public void reload_keeps_active_theme_when_still_registered()
+  {
+    new_engine();
+    write_script("t.lua",
+        "vim.theme('o', { colorKey = '#112233' })\n" +
+        "vim.set_theme('o')\n");
+    lua.reload();
+    assertNotNull(ThemeData.active());
+    lua.reload();
+    // The re-apply after reload must keep the theme applied.
+    assertEquals(0xFF112233, ThemeData.active().colorKey.intValue());
   }
 }

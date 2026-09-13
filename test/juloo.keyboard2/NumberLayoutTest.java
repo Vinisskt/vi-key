@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import org.junit.Test;
 import static org.junit.Assert.*;

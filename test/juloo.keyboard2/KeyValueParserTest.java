@@ -1,9 +1,9 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
-import juloo.keyboard2.KeyValue;
-import juloo.keyboard2.KeyValueParser;
+import com.vinisskt.vikey.KeyValue;
+import com.vinisskt.vikey.KeyValueParser;
 import org.junit.Test;
-import static juloo.keyboard2.TestUtils.*;
+import static com.vinisskt.vikey.TestUtils.*;
 import static org.junit.Assert.*;
 
 public class KeyValueParserTest

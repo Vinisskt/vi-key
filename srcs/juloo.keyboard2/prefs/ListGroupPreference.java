@@ -1,4 +1,4 @@
-package juloo.keyboard2.prefs;
+package com.vinisskt.vikey.prefs;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -9,7 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import java.util.ArrayList;
 import java.util.List;
-import juloo.keyboard2.*;
+import com.vinisskt.vikey.*;
 import org.json.JSONArray;
 import org.json.JSONException;
 

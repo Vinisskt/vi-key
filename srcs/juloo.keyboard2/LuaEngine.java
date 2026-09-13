@@ -1,10 +1,11 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.os.Build;
 import android.os.Environment;
+import android.view.KeyEvent;
 import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.InputConnection;
 import java.io.ByteArrayInputStream;
@@ -51,8 +52,29 @@ import org.luaj.vm2.lib.jse.JsePlatform;
       - [vim.send(text)]: insert text at the cursor
       - [vim.copy(text)] / [vim.paste()] / [vim.clipboard()]: system clipboard
       - [vim.status(text)]: show a transient message in the keyboard status bar
+      - [vim.status_hold(text)]: show a message that stays until the next
+        status update (mode change, another command...). Used for persistent,
+        rolling output.
+      - [vim.key_hook(fn)]: register a key handler. While set, in normal/scroll
+        mode each key is first handed to [fn] with its name ("j", "k", "g",
+        "G", "enter", "esc", "backspace", "space"...); when [fn] returns true
+        the key is consumed. Pass nil to unregister.
       - [vim.page(text)]: open (or update) a browser page showing [text] as
         plain text, styled like the help page
+      - [vim.interval(ms, fn)]: call [fn] on the keyboard queue every [ms]
+        milliseconds (non blocking); returns a handle to pass to
+        [vim.clear_interval]. Timers are cancelled by [reload]. [fn] must be
+        fast (short file reads, updates); it runs on the keyboard main thread.
+      - [vim.clear_interval(handle)]: cancel a timer created by
+        [vim.interval].
+      - [vim.set_mode(mode)]: switch the keyboard mode ("insert", "normal",
+        "scroll"); "scroll" sends DPAD events for j/k, useful to scroll lists.
+      - [vim.theme(name, table)]: register a theme as a table of attribute
+        overrides (colors as "#rrggbb", "#aarrggbb" or numbers; dimensions in
+        dp). Unset attributes keep the built-in "Gruvbox" value.
+      - [vim.set_theme(name)]: apply a registered theme ("" or "gruvbox"
+        restores the built-in theme). The keyboard is re-rendered right away.
+      - [vim.current_theme()]: the name of the applied theme, or "gruvbox".
     Positions are relative to the beginning of the text returned by
     [vim.get_text()]. */
 final class LuaEngine
@@ -61,6 +83,11 @@ final class LuaEngine
   File _lua_dir;
   final Globals _globals;
   final Map<String, LuaValue> _commands = new HashMap<String, LuaValue>();
+  final Map<Integer, TimerHandle> _intervals = new HashMap<Integer, TimerHandle>();
+  final Map<String, ThemeData> _themes = new HashMap<String, ThemeData>();
+  String _active_theme_name = null;
+  int _next_interval_id = 1;
+  LuaValue _key_hook = null;
 
   LuaEngine(KeyEventHandler handler, Context appCtx)
   {
@@ -112,6 +139,7 @@ final class LuaEngine
     if (_globals.compiler == null)
       LuaC.install(_globals);
     setup_vim_api();
+    setup_package_path();
     reload();
   }
 
@@ -126,14 +154,57 @@ final class LuaEngine
     {
       _lua_dir = user_lua_dir();
       ensure_user_lua_dir();
+      setup_package_path();
     }
     _commands.clear();
+    clear_intervals();
+    _themes.clear();
+    _key_hook = null;
+    File init_file = new File(_lua_dir, "init.lua");
+    if (init_file.exists() && init_file.isFile())
+    {
+      // [init.lua] is the entry point of the plugins: it require()s the
+      // modules of the [plugins] subfolder ([package.path] is set by
+      // [setup_package_path]). Reset the require cache so that a reload
+      // re-runs every module.
+      _globals.get("package").set("loaded", new LuaTable());
+      load_script(init_file);
+      apply_active_theme();
+      return;
+    }
     List<File> files = new ArrayList<File>();
     add_files(files, _lua_dir);
     add_files(files, new File(_lua_dir, "plugins"));
     Collections.sort(files);
     for (File f : files)
       load_script(f);
+    apply_active_theme();
+  }
+
+  /** Re-apply the active theme when its definition is still registered after a
+      [reload] (scripts may re-run [vim.theme]). Keep the previous override
+      otherwise so the keyboard does not change appearance on a plain reload. */
+  void apply_active_theme()
+  {
+    if (_active_theme_name == null)
+      return;
+    ThemeData td = _themes.get(_active_theme_name);
+    if (td == null)
+      return;
+    ThemeData.set_active(td);
+    _handler._recv.theme_changed();
+  }
+
+  /** Extend [package.path] so that Lua modules loaded from [init.lua] can be
+      required from the script folder itself and from its [plugins]
+      subfolder: [require("name")] resolves to [dir/name.lua] and
+      [dir/plugins/name.lua]. */
+  void setup_package_path()
+  {
+    String root = _lua_dir.getPath();
+    String base = _globals.get("package").get("path").tojstring();
+    _globals.get("package").set("path",
+        base + ";" + root + "/?.lua;" + root + "/plugins/?.lua");
   }
 
   /** Append the [.lua] script files of [dir] (when it exists) to [out]. */
@@ -179,7 +250,7 @@ final class LuaEngine
           file.getName(), "t", _globals);
       chunk.call();
       String name = command_name_of_file(file.getName());
-      if (!name.isEmpty() && !_commands.containsKey(name))
+      if (!name.isEmpty() && !name.equals("init") && !_commands.containsKey(name))
         _commands.put(name, new ScriptCommand(chunk));
     }
     catch (IOException ex)
@@ -404,12 +475,169 @@ final class LuaEngine
         return LuaValue.NONE;
       }
     });
+    vim.set("status_hold", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue s) {
+        _handler._vim.set_status(s.tojstring(), VimEngine.STATUS_COLOR_CMD);
+        return LuaValue.NONE;
+      }
+    });
+    vim.set("key_hook", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue arg) {
+        if (arg.isnil())
+          _key_hook = null;
+        else if (arg.isfunction())
+          _key_hook = arg;
+        return LuaValue.NONE;
+      }
+    });
     vim.set("page", new OneArgFunction() {
       @Override public LuaValue call(LuaValue s) {
         _handler.open_page("out", s.tojstring());
         return LuaValue.NONE;
       }
     });
+    vim.set("set_mode", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue arg) {
+        String mode = arg.tojstring();
+        int m;
+        switch (mode) {
+          case "insert": m = VimEngine.MODE_INSERT; break;
+          case "normal": m = VimEngine.MODE_NORMAL; break;
+          case "scroll": m = VimEngine.MODE_SCROLL; break;
+          default:
+            _handler._vim.flash_status("modo: " + mode + " (use insert/normal/scroll)",
+                VimEngine.STATUS_COLOR_CMD);
+            return LuaValue.NONE;
+        }
+        _handler._vim.set_mode(m);
+        return LuaValue.NONE;
+      }
+    });
+    vim.set("theme", new VarArgFunction() {
+      @Override public Varargs invoke(Varargs args) {
+        String name = args.arg1().tojstring();
+        if (name.isEmpty())
+          return LuaValue.NONE;
+        ThemeData td;
+        try
+        {
+          td = ThemeData.from_lua_table(args.arg(2));
+        }
+        catch (Exception ex)
+        {
+          flash("lua theme: " + ex.getMessage());
+          return LuaValue.NONE;
+        }
+        if (td == null)
+        {
+          flash("theme: expected a table of attributes");
+          return LuaValue.NONE;
+        }
+        _themes.put(name.toLowerCase(Locale.ROOT), td);
+        return LuaValue.NONE;
+      }
+    });
+    vim.set("set_theme", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue name) {
+        String n = name.tojstring().toLowerCase(Locale.ROOT);
+        if (n.isEmpty() || n.equals("gruvbox"))
+        {
+          // Back to the built-in Gruvbox style.
+          _active_theme_name = n.isEmpty() ? null : n;
+          ThemeData.set_active(null);
+          _handler._recv.theme_changed();
+          return LuaValue.NONE;
+        }
+        ThemeData td = _themes.get(n);
+        if (td == null)
+        {
+          flash("no theme " + n);
+          return LuaValue.NONE;
+        }
+        _active_theme_name = n;
+        ThemeData.set_active(td);
+        _handler._recv.theme_changed();
+        return LuaValue.NONE;
+      }
+    });
+    vim.set("current_theme", new ZeroArgFunction() {
+      @Override public LuaValue call() {
+        return (_active_theme_name == null)
+          ? LuaValue.valueOf("gruvbox")
+          : LuaValue.valueOf(_active_theme_name);
+      }
+    });
+    vim.set("interval", new VarArgFunction() {
+      @Override public Varargs invoke(Varargs args) {
+        long ms = args.arg1().tolong();
+        LuaValue fn = args.arg(2);
+        if (ms <= 0 || !fn.isfunction())
+          return LuaValue.NONE;
+        int id = _next_interval_id++;
+        TimerHandle t = new TimerHandle(id, ms, fn);
+        _intervals.put(id, t);
+        _handler.get_handler().postDelayed(t, ms);
+        return LuaValue.valueOf(id);
+      }
+    });
+    vim.set("clear_interval", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue id) {
+        TimerHandle t = _intervals.remove(id.toint());
+        if (t != null)
+          t.cancel();
+        return LuaValue.NONE;
+      }
+    });
+  }
+
+  /** Cancel every running timer (called by [reload]). */
+  void clear_intervals()
+  {
+    for (TimerHandle t : _intervals.values())
+      t.cancel();
+    _intervals.clear();
+  }
+
+  /** A timer scheduled through [vim.interval]: runs [fn] on the keyboard main
+      queue every [periodMs] milliseconds and reschedules itself until
+      cancelled (by [vim.clear_interval] or [reload]). Errors cancel the
+      timer to avoid error loops. */
+  final class TimerHandle implements Runnable
+  {
+    final int _id;
+    final long _periodMs;
+    final LuaValue _fn;
+    boolean _cancelled;
+
+    TimerHandle(int id, long periodMs, LuaValue fn)
+    {
+      _id = id;
+      _periodMs = periodMs;
+      _fn = fn;
+    }
+
+    @Override public void run()
+    {
+      if (_cancelled)
+        return;
+      try
+      {
+        _fn.call();
+      }
+      catch (Exception ex)
+      {
+        cancel();
+        LuaEngine.this.flash("lua interval: " + ex.getMessage());
+        return;
+      }
+      if (!_cancelled)
+        _handler.get_handler().postDelayed(this, _periodMs);
+    }
+
+    void cancel()
+    {
+      _cancelled = true;
+    }
   }
 
   InputConnection current_conn()
@@ -436,5 +664,53 @@ final class LuaEngine
   {
     ExtractedText et = current_extracted();
     return (et == null) ? -1 : et.startOffset;
+  }
+
+  /** Give a [vim.key_hook] function a chance to consume a key in normal/scroll
+      mode. Returns true when the hook took the key (and false otherwise). The
+      hook is called with the key name ("j", "k", "enter", "esc", "backspace",
+      "space", ...) and consumes the key when it returns true. */
+  boolean consume_lua_key(KeyValue key)
+  {
+    if (_key_hook == null)
+      return false;
+    int mode = _handler._vim.mode();
+    if (mode != VimEngine.MODE_NORMAL && mode != VimEngine.MODE_SCROLL)
+      return false;
+    String name;
+    switch (key.getKind())
+    {
+      case Char: name = String.valueOf(key.getChar()); break;
+      case Keyevent:
+        switch (key.getKeyevent())
+        {
+          case KeyEvent.KEYCODE_ENTER: name = "enter"; break;
+          case KeyEvent.KEYCODE_ESCAPE: name = "esc"; break;
+          case KeyEvent.KEYCODE_BACK: name = "back"; break;
+          case KeyEvent.KEYCODE_DPAD_UP: name = "up"; break;
+          case KeyEvent.KEYCODE_DPAD_DOWN: name = "down"; break;
+          default: return false;
+        }
+        break;
+      case Editing:
+        switch (key.getEditing())
+        {
+          case BACKSPACE: name = "backspace"; break;
+          case SPACE_BAR: name = "space"; break;
+          default: return false;
+        }
+        break;
+      default: return false;
+    }
+    try
+    {
+      return _key_hook.call(name).toboolean();
+    }
+    catch (Exception ex)
+    {
+      _key_hook = null;
+      flash("lua key_hook: " + ex.getMessage());
+      return false;
+    }
   }
 }

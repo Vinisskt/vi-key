@@ -1,16 +1,19 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.view.KeyEvent;
 import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.InputConnection;
+import java.util.HashMap;
 
 /** Vim-style editing engine.
     Characters typed are interpreted according to the current mode: INSERT
     types them, NORMAL interprets them as editing commands and SEARCH appends
     them to a search query.
     Only the main Vim commands are implemented: [hjkl] movement, [wbe] word
-    motions, [0$] line start/end, [ggG] document start/end, [dd], [dw], [de],
-    [x], undo with [u], redo with ctrl+r, [i] to switch back to insert mode,
+    motions, [0$] line start/end, [ggG] document start/end, [dd], [dw], [de], [yy], [yw], [ye], [x], undo with [u],
+    redo with ctrl+r, [p]/[P] paste, registers selected with ["]name] ([a-z]),
+    [i] to switch back to insert mode
+    before the cursor and [a] to append after it,
     [o] to open a new line below and [O] to open one above, [/?] search forward
     and backward ([/] searches, [?] opens the built-in help),
     and [jk] or [ctrl]+escape to switch back to normal mode. Counts are
@@ -22,8 +25,116 @@ public final class VimEngine
   public static final int MODE_NORMAL = 1;
   public static final int MODE_SEARCH = 2;
   public static final int MODE_CMD = 3;
+  public static final int MODE_SCROLL = 4;
 
   private static final long JK_DELAY_MS = 300;
+
+  // ---- Multi-tap accent (PT-BR) ----
+  // 1 toque = letra normal; 2+ toques rápidos na mesma tecla ciclam pelos
+  // acentos (2=agudo, 3=circunflexo, 4=til, 5=grave; c: 2=ç). A primeira letra
+  // é digitada na hora e os toques adicionais a substituem (replace), então
+  // não há latência; digitar duas letras iguais seguidas exige uma pausa maior
+  // que MULTI_TAP_TIMEOUT_MS entre os toques.
+  static final boolean MULTI_TAP_ENABLED = true;
+  static final long MULTI_TAP_TIMEOUT_MS = 350;
+  /** Letra da sequência atual (0 = nenhuma em andamento). */
+  char _mt_key = 0;
+  /** Contagem de toques rápidos na [_mt_key]. */
+  int _mt_count = 0;
+  /** Momento do último toque (System.currentTimeMillis). */
+  long _mt_ts = 0;
+  /** Um toque real está em andamento (key_down visto, key_up ainda por vir).
+      Repetições por segurar chamam key_up SEM um key_down novo, então nunca
+      são contadas como toque. */
+  boolean _mt_press_pending = false;
+
+  /** Acentos por letra e nível de toque (a prioridade é agudo, circunflexo,
+      til, grave, diérese). */
+  static char accent_variant(char lc, int n)
+  {
+    switch (lc)
+    {
+      case 'a': switch (n) { case 2: return 'á'; case 3: return 'â'; case 4: return 'ã'; case 5: return 'à'; }
+      case 'e': switch (n) { case 2: return 'é'; case 3: return 'ê'; case 4: return 'è'; }
+      case 'i': switch (n) { case 2: return 'í'; case 3: return 'î'; case 4: return 'ì'; }
+      case 'o': switch (n) { case 2: return 'ó'; case 3: return 'ô'; case 4: return 'õ'; case 5: return 'ò'; }
+      case 'u': switch (n) { case 2: return 'ú'; case 3: return 'û'; case 4: return 'ü'; case 5: return 'ù'; }
+      case 'c': switch (n) { case 2: return 'ç'; }
+    }
+    return 0;
+  }
+
+  static boolean is_accent_key(char c)
+  {
+    switch (Character.toLowerCase(c))
+    {
+      case 'a': case 'e': case 'i': case 'o': case 'u': case 'c': return true;
+      default: return false;
+    }
+  }
+
+  /** Quando uma tecla desce (toque real ou não). Prepara o dedup de toques. */
+  void note_key_down(char c)
+  {
+    if (!MULTI_TAP_ENABLED || !is_insert() || !is_accent_key(c))
+    {
+      reset_multitap();
+      return;
+    }
+    _mt_press_pending = true;
+  }
+
+  /** Um key_up de repetição por segurar (não é toque). */
+  void on_pointer_repeat()
+  {
+    _mt_press_pending = false;
+  }
+
+  void reset_multitap()
+  {
+    _mt_key = 0;
+    _mt_count = 0;
+    _mt_ts = 0;
+    _mt_press_pending = false;
+  }
+
+  /** Decide o que digitar para um toque em [c], em modo INSERT. Retorna o
+      caractere acentuado (substituindo o anterior) ou 0 para digitar normal. */
+  char multitap_accent(char c)
+  {
+    if (!MULTI_TAP_ENABLED)
+      return 0;
+    long now = System.currentTimeMillis();
+    boolean tap = _mt_press_pending;
+    _mt_press_pending = false;
+    if (!tap)  // key_up sem key_down: repetição por segurar, não conta
+    {
+      reset_multitap();
+      return 0;
+    }
+    if (_mt_key == c && now - _mt_ts <= MULTI_TAP_TIMEOUT_MS)
+      _mt_count++;
+    else
+    {
+      _mt_key = c;
+      _mt_count = 1;
+    }
+    _mt_ts = now;
+    if (_mt_count <= 1)
+      return 0;
+    char v = accent_variant(Character.toLowerCase(c), _mt_count);
+    if (v == 0)
+      return 0;
+    if (Character.isUpperCase(c))
+      return Character.toUpperCase(v);
+    return v;
+  }
+
+  /** Substitui o caractere anterior pelo acento do multi-tap. */
+  void accent_multi_tap(char c)
+  {
+    _handler.accent_multi_tap_replace(c);
+  }
 
   // Status bar background colors (Neovim-style mode indicators). The text
   // drawn on top of them is always dark.
@@ -42,6 +153,13 @@ public final class VimEngine
   final StringBuilder _count = new StringBuilder();
   char _op = 0;
   boolean _pending_g = false;
+  /** Clipboard registers: named registers [a-z] and the unnamed register (the
+      last yanked or deleted text). A register is selected with ["a]..["z] and
+      applies to the next yank/delete/paste command. */
+  final HashMap<Character,String> _registers = new HashMap<Character,String>();
+  String _unnamed_register = "";
+  char _cmd_register = 0;
+  boolean _register_pending = false;
 
   VimEngine(KeyEventHandler handler)
   {
@@ -58,15 +176,25 @@ public final class VimEngine
     _op = 0;
     _pending_g = false;
     _count.setLength(0);
+    _cmd_register = 0;
+    _register_pending = false;
     _handler.get_handler().removeCallbacks(_jk_delay);
     _search.reset();
     _cmd.reset();
+    _registers.clear();
+    _unnamed_register = "";
+    reset_multitap();
     update_status();
   }
 
   /** Called before every key is dispatched. */
   boolean on_key(KeyValue kv, int metaState)
   {
+    // A multi-tap só faz sentido entre toques da mesma letra: qualquer outra
+    // tecla (espaço, enter, backspace, seta, modificador...) interrompe a
+    // sequência.
+    if (kv.getKind() != KeyValue.Kind.Char)
+      reset_multitap();
     // While a 'j' is pending in insert mode, the next key is allowed to be a
     // 'k' to switch to normal mode. Any other key flushes the pending 'j'.
     if (_mode == MODE_INSERT && _pending_jk
@@ -96,7 +224,12 @@ public final class VimEngine
           // Consume ctrl+char keys in normal mode
           return true;
         }
-        return on_normal_char(c);
+        boolean consumed = on_normal_char(c);
+        // Live-update the composition hint at the right of the status bar,
+        // without touching the mode label or any flashed status message.
+        if (_mode == MODE_NORMAL)
+          _handler._recv.set_vim_hint(normal_hint());
+        return consumed;
       }
       case Editing: return on_editing_key(kv.getEditing());
       case Keyevent:
@@ -134,6 +267,12 @@ public final class VimEngine
       _handler.get_handler().postDelayed(_jk_delay, JK_DELAY_MS);
       return true;
     }
+    char accent = multitap_accent(c);
+    if (accent != 0)
+    {
+      accent_multi_tap(accent);
+      return true;
+    }
     _handler.send_text(String.valueOf(c));
     return true;
   }
@@ -159,7 +298,7 @@ public final class VimEngine
 
   boolean on_enter()
   {
-    if (_mode == MODE_NORMAL)
+    if (_mode == MODE_NORMAL || _mode == MODE_SCROLL)
     {
       _move_j(1);
       return true;
@@ -194,6 +333,11 @@ public final class VimEngine
       set_mode(MODE_NORMAL);
       return true;
     }
+    if (_mode == MODE_SCROLL)
+    {
+      set_mode(MODE_INSERT);
+      return true;
+    }
     return true;
   }
 
@@ -217,12 +361,12 @@ public final class VimEngine
         default: return false;
       }
     }
-    if (_mode == MODE_NORMAL)
+    if (_mode == MODE_NORMAL || _mode == MODE_SCROLL)
     {
       switch (ev)
       {
         case BACKSPACE: delete_forward(1); return true;
-        case SPACE_BAR: return true; // Consume the space bar in normal mode
+        case SPACE_BAR: return true; // Consume the space bar in normal/scroll mode
         default: return false;
       }
     }
@@ -231,6 +375,34 @@ public final class VimEngine
 
   boolean on_normal_char(char c)
   {
+    if (c == '"')
+    {
+      _register_pending = true;
+      return true;
+    }
+    if (_register_pending)
+    {
+      _register_pending = false;
+      char reg = Character.toLowerCase(c);
+      if (is_register_name(reg))
+      {
+        _cmd_register = reg;
+        return true;
+      }
+      // Invalid register name: ignore it and process [c] normally.
+    }
+    if (c == 'P')
+    {
+      paste_register(false);
+      _clear_count();
+      return true;
+    }
+    if (c == 'p')
+    {
+      paste_register(true);
+      _clear_count();
+      return true;
+    }
     if (c == 'N')
     {
       _search.prev();
@@ -281,9 +453,22 @@ public final class VimEngine
         default: _op = 0; break;
       }
     }
+    if (_op == 'y')
+    {
+      switch (c)
+      {
+        case 'y': _op = 0; yank_line(count()); _clear_count(); return true;
+        case 'w': _op = 0; yank_word(count()); _clear_count(); return true;
+        case 'e': _op = 0; yank_word_end(count()); _clear_count(); return true;
+        case '0': _op = 0; yank_col_start(); _clear_count(); return true;
+        case '$': _op = 0; yank_col_end(); _clear_count(); return true;
+        default: _op = 0; break;
+      }
+    }
     switch (c)
     {
       case 'i': _clear_count(); set_mode(MODE_INSERT); return true;
+      case 'a': _clear_count(); _move_l(1); set_mode(MODE_INSERT); return true;
       case 'o': open_line_below(); return true;
       case 'O': open_line_above(); return true;
       case 'h': _move_h(count()); _clear_count(); return true;
@@ -298,6 +483,7 @@ public final class VimEngine
       case 'g': _pending_g = true; return true;
       case 'x': delete_forward(count()); _clear_count(); return true;
       case 'd': _op = 'd'; return true;
+      case 'y': _op = 'y'; return true;
       case 'u': _handler.send_context_menu_action(android.R.id.undo); _clear_count(); return true;
       case '/': _begin_search(); _clear_count(); return true;
       case ':': _begin_command(); _clear_count(); return true;
@@ -329,7 +515,13 @@ public final class VimEngine
     _pending_g = false;
     _count.setLength(0);
     _handler.get_handler().removeCallbacks(_jk_delay);
+    reset_multitap();
     update_status();
+  }
+
+  int mode()
+  {
+    return _mode;
   }
 
   void flush_pending_j()
@@ -355,12 +547,21 @@ public final class VimEngine
 
   /** Display a transient message in the status bar (used to report the result
       of a command while the keyboard is in normal mode). */
+  private static final int STATUS_DURATION_MS = 4000;
+
   void flash_status(String text, int color)
   {
     _handler._recv.set_vim_status(text, color);
     _handler.get_handler().postDelayed(new Runnable() {
       public void run() { update_status(); }
-    }, 1600);
+    }, STATUS_DURATION_MS);
+  }
+
+  /** Like [flash_status], but keeps the text until the next status update
+      (mode change, a new command, etc.). Used for persistent, rolling output. */
+  void set_status(String text, int color)
+  {
+    _handler._recv.set_vim_status(text, color);
   }
 
   void update_status()
@@ -371,6 +572,7 @@ public final class VimEngine
     {
       case MODE_INSERT: text = "INSERT"; color = STATUS_COLOR_INSERT; break;
       case MODE_NORMAL: text = "NORMAL"; color = STATUS_COLOR_NORMAL; break;
+      case MODE_SCROLL: text = "SCROLL"; color = STATUS_COLOR_NORMAL; break;
       case MODE_CMD: text = ":" + _cmd.command(); color = STATUS_COLOR_CMD; break;
       default:
         text = "/" + _search.query();
@@ -380,6 +582,27 @@ public final class VimEngine
         break;
     }
     _handler._recv.set_vim_status(text, color);
+    // In normal mode, while a command is being composed (pending [g],
+    // operator or count) show the valid completion keys at the right of the
+    // status bar, so the user learns the navigation shortcuts.
+    _handler._recv.set_vim_hint(
+        (_mode == MODE_NORMAL) ? normal_hint() : "");
+  }
+
+  /** Hint shown at the right of the status bar in normal mode while a command
+      is being composed (pending [g], operator or count): the valid completion
+      keys, so the user learns the shortcuts. Empty otherwise. */
+  String normal_hint()
+  {
+    if (_pending_g)
+      return "gg G";
+    if (_op == 'd')
+      return "dd dw de d0 d$";
+    if (_op == 'y')
+      return "yy yw ye y0 y$";
+    if (_count.length() > 0)
+      return "h j k l w b e G 0 $";
+    return "";
   }
 
   // ---- Movement --------------------------------------------------------
@@ -560,9 +783,12 @@ public final class VimEngine
       // Delete the selection instead of a character.
       int before = td.cursor_rel - td.sel_s_rel;
       int after = td.sel_e_rel - td.cursor_rel;
+      deleted_to_register(td.text.substring(td.sel_s_rel, td.sel_e_rel));
       delete_range(td, before, after);
       return;
     }
+    deleted_to_register(td.text.substring(td.cursor_rel,
+        Math.min(td.n, td.cursor_rel + count)));
     delete_range(td, 0, count);
   }
 
@@ -582,8 +808,13 @@ public final class VimEngine
         line_end++;
       int before = rel - line_start;
       int after = line_end - rel;
+      int line_len = after;
       if (line_end < td.n)
-        after++; // Include the line ending
+      {
+        line_len++; // Include the line ending in the register
+        after++;    // Include the line ending in the deletion
+      }
+      deleted_to_register(td.text.substring(line_start, line_start + line_len));
       delete_range(td, before, after);
     }
   }
@@ -600,9 +831,13 @@ public final class VimEngine
       {
         // Nothing to delete: still delete trailing separators before EOF.
         if (end > td.cursor_rel)
+        {
+          deleted_to_register(td.text.substring(td.cursor_rel, end));
           delete_range(td, 0, end - td.cursor_rel);
+        }
         return;
       }
+      deleted_to_register(td.text.substring(td.cursor_rel, end));
       delete_range(td, 0, end - td.cursor_rel);
     }
   }
@@ -617,6 +852,7 @@ public final class VimEngine
       int end = word_end_forward(td.text, td.cursor_rel);
       if (end <= td.cursor_rel)
         return;
+      deleted_to_register(td.text.substring(td.cursor_rel, end));
       delete_range(td, 0, end - td.cursor_rel);
     }
   }
@@ -630,6 +866,7 @@ public final class VimEngine
     int line_start = rel;
     while (line_start > 0 && td.text.charAt(line_start - 1) != '\n')
       line_start--;
+    deleted_to_register(td.text.substring(line_start, rel));
     delete_range(td, rel - line_start, 0);
   }
 
@@ -642,7 +879,149 @@ public final class VimEngine
     int line_end = rel;
     while (line_end < td.n && td.text.charAt(line_end) != '\n')
       line_end++;
+    deleted_to_register(td.text.substring(rel, line_end));
     delete_range(td, 0, line_end - rel);
+  }
+
+  // ---- Clipboard registers ---------------------------------------------
+
+  /** Register names: [a-z]. The unnamed register holds the last yanked or
+      deleted text. */
+  static boolean is_register_name(char c)
+  {
+    return c >= 'a' && c <= 'z';
+  }
+
+  /** Text to paste with [p]/[P]: the selected register, the unnamed register
+      (last yank/delete) or, as a fallback, the system clipboard. */
+  String register_text()
+  {
+    if (_cmd_register != 0)
+    {
+      String s = _registers.get(_cmd_register);
+      _cmd_register = 0;
+      if (s != null)
+        return s;
+    }
+    if (!_unnamed_register.isEmpty())
+      return _unnamed_register;
+    String sys = _handler.get_clipboard_text();
+    return (sys == null) ? "" : sys;
+  }
+
+  /** Store [text] in the selected register and in the unnamed register,
+      mirroring vim: yanking to a named register also updates the unnamed
+      register. Also updates the system clipboard so the text can be pasted
+      anywhere. */
+  void yank_to_register(String text)
+  {
+    if (_cmd_register != 0)
+    {
+      _registers.put(_cmd_register, text);
+      _cmd_register = 0;
+    }
+    _unnamed_register = text;
+    _handler.set_clipboard_text(text);
+  }
+
+  /** Same as [yank_to_register] but for deletions (vim also puts deleted text
+      into the register). */
+  void deleted_to_register(String text)
+  {
+    if (_cmd_register != 0)
+    {
+      _registers.put(_cmd_register, text);
+      _cmd_register = 0;
+    }
+    _unnamed_register = text;
+  }
+
+  /** Paste at the cursor. [after] moves one character to the right first so
+      the text is inserted after the current character (vim [p]); otherwise it
+      inserts before it (vim [P]). */
+  void paste_register(boolean after)
+  {
+    String text = register_text();
+    if (text.isEmpty())
+    {
+      flash_status("registrador vazio", STATUS_COLOR_CMD);
+      return;
+    }
+    if (after)
+      _move_l(1);
+    _handler.send_text(text);
+  }
+
+  // ---- Yank (copy) ------------------------------------------------------
+
+  void yank_line(int count)
+  {
+    for (int i = 0; i < count; i++)
+    {
+      TextData td = get_text();
+      if (td == null)
+        return;
+      int rel = td.cursor_rel;
+      int line_start = rel;
+      while (line_start > 0 && td.text.charAt(line_start - 1) != '\n')
+        line_start--;
+      int line_end = rel;
+      while (line_end < td.n && td.text.charAt(line_end) != '\n')
+        line_end++;
+      yank_to_register(td.text.substring(line_start, line_end));
+    }
+  }
+
+  void yank_word(int count)
+  {
+    for (int i = 0; i < count; i++)
+    {
+      TextData td = get_text();
+      if (td == null)
+        return;
+      int end = word_start_after(td.text, td.cursor_rel);
+      if (end <= td.cursor_rel)
+        return;
+      yank_to_register(td.text.substring(td.cursor_rel, end));
+    }
+  }
+
+  void yank_word_end(int count)
+  {
+    for (int i = 0; i < count; i++)
+    {
+      TextData td = get_text();
+      if (td == null)
+        return;
+      int end = word_end_forward(td.text, td.cursor_rel);
+      if (end <= td.cursor_rel)
+        return;
+      yank_to_register(td.text.substring(td.cursor_rel, end));
+    }
+  }
+
+  void yank_col_start()
+  {
+    TextData td = get_text();
+    if (td == null)
+      return;
+    int rel = td.cursor_rel;
+    int line_start = rel;
+    while (line_start > 0 && td.text.charAt(line_start - 1) != '\n')
+      line_start--;
+    yank_to_register(td.text.substring(line_start, rel));
+  }
+
+  void yank_col_end()
+  {
+    TextData td = get_text();
+    if (td == null)
+      return;
+    int rel = td.cursor_rel;
+    int line_end = rel;
+    while (line_end < td.n && td.text.charAt(line_end) != '\n')
+      line_end++;
+    yank_to_register(td.text.substring(rel, line_end));
   }
 
   // ---- Text access -----------------------------------------------------

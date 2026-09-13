@@ -1,4 +1,4 @@
-package juloo.keyboard2.prefs;
+package com.vinisskt.vikey.prefs;
 
 import android.content.Context;
 import android.content.res.TypedArray;

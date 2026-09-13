@@ -1,4 +1,4 @@
-package juloo.keyboard2.prefs;
+package com.vinisskt.vikey.prefs;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -12,7 +12,7 @@ import android.widget.TextView;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import juloo.keyboard2.*;
+import com.vinisskt.vikey.*;
 
 /** This class implements the "extra keys" preference but also defines the
     possible extra keys. */

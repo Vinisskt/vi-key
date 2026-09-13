@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 /** This file is generated, see [srcs/compose/compile.py]. */
 

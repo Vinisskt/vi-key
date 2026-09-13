@@ -36,7 +36,7 @@ keeps that DNA and adds a whole Vim engine on top:
 
 ## Install / build
 
-- Install the debug APK (package `juloo.keyboard2`) or build it yourself:
+- Install the debug APK (package `com.vinisskt.vikey`) or build it yourself:
 
   ```sh
   ./gradlew assembleDebug

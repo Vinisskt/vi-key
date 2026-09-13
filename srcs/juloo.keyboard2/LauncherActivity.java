@@ -1,4 +1,4 @@
-package juloo.keyboard2;
+package com.vinisskt.vikey;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -12,8 +12,7 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
-import juloo.keyboard2.dict.DictionariesActivity;
-import juloo.keyboard2.R;
+import com.vinisskt.vikey.R;
 
 public class LauncherActivity extends Activity
 {
@@ -63,11 +62,6 @@ public class LauncherActivity extends Activity
     InputMethodManager imm =
       (InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
     imm.showInputMethodPicker();
-  }
-
-  public void launch_dictionaries_activity(View v)
-  {
-    startActivity(new Intent(this, DictionariesActivity.class));
   }
 
   final class Tryhere_OnUnhandledKeyEventListener implements View.OnUnhandledKeyEventListener

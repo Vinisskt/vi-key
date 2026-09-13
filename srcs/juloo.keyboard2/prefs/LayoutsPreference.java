@@ -1,4 +1,4 @@
-package juloo.keyboard2.prefs;
+package com.vinisskt.vikey.prefs;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import juloo.keyboard2.*;
+import com.vinisskt.vikey.*;
 import org.json.JSONException;
 import org.json.JSONObject;
 
