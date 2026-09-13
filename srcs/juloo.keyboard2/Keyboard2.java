@@ -35,6 +35,7 @@ public class Keyboard2 extends InputMethodService
   private ViewGroup _keyboard_container_view;
   private Keyboard2View _keyboard_layout_view;
   private TextView _vim_status;
+  private TextView _vim_hint;
   /** The [ThemeData.revision] the current views were built with; a Lua theme
       change bumps the revision and triggers a rebuild of the views. */
   private int _view_revision = -1;
@@ -152,6 +153,7 @@ public class Keyboard2 extends InputMethodService
     _keyboard_container_view = (ViewGroup)inflate_view(R.layout.keyboard);
     _keyboard_layout_view = (Keyboard2View)_keyboard_container_view.findViewById(R.id.keyboard_view);
     _vim_status = (TextView)_keyboard_container_view.findViewById(R.id.vim_status);
+    _vim_hint = (TextView)_keyboard_container_view.findViewById(R.id.vim_hint);
     // The root background is themed at runtime as well so that a Lua theme can
     // override [colorKeyboard] (the inflated [?attr/colorKeyboard] only knows
     // the built-in style).
@@ -515,6 +517,19 @@ public class Keyboard2 extends InputMethodService
         _vim_status.setTextColor(0xFF1D2021);
         _vim_status.setBackgroundColor(color);
         _vim_status.setVisibility(View.VISIBLE);
+      }
+      // Any other use of the bar (Lua messages, the picker...) supersedes the
+      // normal-mode command hint, so hide it.
+      if (_vim_hint != null)
+        _vim_hint.setVisibility(View.GONE);
+    }
+
+    public void set_vim_hint(String text)
+    {
+      if (_vim_hint != null)
+      {
+        _vim_hint.setText(text);
+        _vim_hint.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
       }
     }
 

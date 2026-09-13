@@ -77,4 +77,10 @@ public abstract class VimTestBase
     int i = s.indexOf('\u0000');
     return (i < 0) ? s : s.substring(0, i);
   }
+
+  /** The last command hint text, or [null] when none was ever sent. */
+  protected String lastHint()
+  {
+    return _receiver.lastHint();
+  }
 }

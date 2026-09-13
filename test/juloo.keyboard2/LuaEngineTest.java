@@ -308,6 +308,7 @@ public class LuaEngineTest extends VimTestBase
     @Override public android.os.Handler getHandler() { return new android.os.Handler(android.os.Looper.getMainLooper()); }
     @Override public android.content.Context getApplicationContext() { return null; }
     @Override public void set_vim_status(String text, int color) { statuses.add(text + "\u0000" + color); }
+    @Override public void set_vim_hint(String text) {}
     @Override public boolean is_float_open() { return false; }
     @Override public void toggle_float_panel(String url) {}
     @Override public void close_float_panel() {}

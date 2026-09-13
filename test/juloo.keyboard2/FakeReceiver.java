@@ -16,6 +16,7 @@ public final class FakeReceiver implements KeyEventHandler.IReceiver
   public final List<Boolean> composePending = new ArrayList<Boolean>();
   public final List<Boolean> selectionStates = new ArrayList<Boolean>();
   public final List<String> vimStatuses = new ArrayList<String>();
+  public final List<String> vimHints = new ArrayList<String>();
   public boolean floatOpen = false;
   public String floatUrl = null;
   public int helpOpened = 0;
@@ -35,6 +36,10 @@ public final class FakeReceiver implements KeyEventHandler.IReceiver
   public void set_vim_status(String text, int color)
   { vimStatuses.add(text + "\u0000" + color); }
 
+  @Override
+  public void set_vim_hint(String text)
+  { vimHints.add(text); }
+
   @Override public boolean is_float_open() { return floatOpen; }
   @Override public void toggle_float_panel(String url)
   { floatOpen = !floatOpen; floatUrl = url; }
@@ -46,6 +51,7 @@ public final class FakeReceiver implements KeyEventHandler.IReceiver
 
   public String lastStatus() { return vimStatuses.isEmpty() ? null : vimStatuses.get(vimStatuses.size() - 1); }
   public boolean lastStatusIn(String s) { return s.contains(s); }
+  public String lastHint() { return vimHints.isEmpty() ? null : vimHints.get(vimHints.size() - 1); }
 
   public static boolean is_normal(String lastStatus)
   { return lastStatus != null && lastStatus.startsWith("NORMAL"); }
