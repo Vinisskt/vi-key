@@ -305,6 +305,9 @@ public final class Config
     public char getQuickTapSymbol(char c);
     /** Send text to the input connection. */
     public void send_text(String text);
+    /** A key_up coming from hold-repeat (not a real tap). Used to stop the
+        multi-tap accent counting for held keys. Default does nothing. */
+    default public void on_multi_tap_pointer_repeat() {}
   }
 
   /** Config migrations. */

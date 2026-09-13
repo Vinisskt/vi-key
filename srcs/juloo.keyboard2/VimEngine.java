@@ -27,6 +27,113 @@ public final class VimEngine
 
   private static final long JK_DELAY_MS = 300;
 
+  // ---- Multi-tap accent (PT-BR) ----
+  // 1 toque = letra normal; 2+ toques rápidos na mesma tecla ciclam pelos
+  // acentos (2=agudo, 3=circunflexo, 4=til, 5=grave; c: 2=ç). A primeira letra
+  // é digitada na hora e os toques adicionais a substituem (replace), então
+  // não há latência; digitar duas letras iguais seguidas exige uma pausa maior
+  // que MULTI_TAP_TIMEOUT_MS entre os toques.
+  static final boolean MULTI_TAP_ENABLED = true;
+  static final long MULTI_TAP_TIMEOUT_MS = 350;
+  /** Letra da sequência atual (0 = nenhuma em andamento). */
+  char _mt_key = 0;
+  /** Contagem de toques rápidos na [_mt_key]. */
+  int _mt_count = 0;
+  /** Momento do último toque (System.currentTimeMillis). */
+  long _mt_ts = 0;
+  /** Um toque real está em andamento (key_down visto, key_up ainda por vir).
+      Repetições por segurar chamam key_up SEM um key_down novo, então nunca
+      são contadas como toque. */
+  boolean _mt_press_pending = false;
+
+  /** Acentos por letra e nível de toque (a prioridade é agudo, circunflexo,
+      til, grave, diérese). */
+  static char accent_variant(char lc, int n)
+  {
+    switch (lc)
+    {
+      case 'a': switch (n) { case 2: return 'á'; case 3: return 'â'; case 4: return 'ã'; case 5: return 'à'; }
+      case 'e': switch (n) { case 2: return 'é'; case 3: return 'ê'; case 4: return 'è'; }
+      case 'i': switch (n) { case 2: return 'í'; case 3: return 'î'; case 4: return 'ì'; }
+      case 'o': switch (n) { case 2: return 'ó'; case 3: return 'ô'; case 4: return 'õ'; case 5: return 'ò'; }
+      case 'u': switch (n) { case 2: return 'ú'; case 3: return 'û'; case 4: return 'ü'; case 5: return 'ù'; }
+      case 'c': switch (n) { case 2: return 'ç'; }
+    }
+    return 0;
+  }
+
+  static boolean is_accent_key(char c)
+  {
+    switch (Character.toLowerCase(c))
+    {
+      case 'a': case 'e': case 'i': case 'o': case 'u': case 'c': return true;
+      default: return false;
+    }
+  }
+
+  /** Quando uma tecla desce (toque real ou não). Prepara o dedup de toques. */
+  void note_key_down(char c)
+  {
+    if (!MULTI_TAP_ENABLED || !is_insert() || !is_accent_key(c))
+    {
+      reset_multitap();
+      return;
+    }
+    _mt_press_pending = true;
+  }
+
+  /** Um key_up de repetição por segurar (não é toque). */
+  void on_pointer_repeat()
+  {
+    _mt_press_pending = false;
+  }
+
+  void reset_multitap()
+  {
+    _mt_key = 0;
+    _mt_count = 0;
+    _mt_ts = 0;
+    _mt_press_pending = false;
+  }
+
+  /** Decide o que digitar para um toque em [c], em modo INSERT. Retorna o
+      caractere acentuado (substituindo o anterior) ou 0 para digitar normal. */
+  char multitap_accent(char c)
+  {
+    if (!MULTI_TAP_ENABLED)
+      return 0;
+    long now = System.currentTimeMillis();
+    boolean tap = _mt_press_pending;
+    _mt_press_pending = false;
+    if (!tap)  // key_up sem key_down: repetição por segurar, não conta
+    {
+      reset_multitap();
+      return 0;
+    }
+    if (_mt_key == c && now - _mt_ts <= MULTI_TAP_TIMEOUT_MS)
+      _mt_count++;
+    else
+    {
+      _mt_key = c;
+      _mt_count = 1;
+    }
+    _mt_ts = now;
+    if (_mt_count <= 1)
+      return 0;
+    char v = accent_variant(Character.toLowerCase(c), _mt_count);
+    if (v == 0)
+      return 0;
+    if (Character.isUpperCase(c))
+      return Character.toUpperCase(v);
+    return v;
+  }
+
+  /** Substitui o caractere anterior pelo acento do multi-tap. */
+  void accent_multi_tap(char c)
+  {
+    _handler.accent_multi_tap_replace(c);
+  }
+
   // Status bar background colors (Neovim-style mode indicators). The text
   // drawn on top of them is always dark.
   private static final int STATUS_COLOR_INSERT = 0xFF83A598;
@@ -63,12 +170,18 @@ public final class VimEngine
     _handler.get_handler().removeCallbacks(_jk_delay);
     _search.reset();
     _cmd.reset();
+    reset_multitap();
     update_status();
   }
 
   /** Called before every key is dispatched. */
   boolean on_key(KeyValue kv, int metaState)
   {
+    // A multi-tap só faz sentido entre toques da mesma letra: qualquer outra
+    // tecla (espaço, enter, backspace, seta, modificador...) interrompe a
+    // sequência.
+    if (kv.getKind() != KeyValue.Kind.Char)
+      reset_multitap();
     // While a 'j' is pending in insert mode, the next key is allowed to be a
     // 'k' to switch to normal mode. Any other key flushes the pending 'j'.
     if (_mode == MODE_INSERT && _pending_jk
@@ -98,7 +211,12 @@ public final class VimEngine
           // Consume ctrl+char keys in normal mode
           return true;
         }
-        return on_normal_char(c);
+        boolean consumed = on_normal_char(c);
+        // Live-update the composition hint at the right of the status bar,
+        // without touching the mode label or any flashed status message.
+        if (_mode == MODE_NORMAL)
+          _handler._recv.set_vim_hint(normal_hint());
+        return consumed;
       }
       case Editing: return on_editing_key(kv.getEditing());
       case Keyevent:
@@ -134,6 +252,12 @@ public final class VimEngine
     {
       _pending_jk = true;
       _handler.get_handler().postDelayed(_jk_delay, JK_DELAY_MS);
+      return true;
+    }
+    char accent = multitap_accent(c);
+    if (accent != 0)
+    {
+      accent_multi_tap(accent);
       return true;
     }
     _handler.send_text(String.valueOf(c));
@@ -337,7 +461,13 @@ public final class VimEngine
     _pending_g = false;
     _count.setLength(0);
     _handler.get_handler().removeCallbacks(_jk_delay);
+    reset_multitap();
     update_status();
+  }
+
+  int mode()
+  {
+    return _mode;
   }
 
   void flush_pending_j()
@@ -398,6 +528,25 @@ public final class VimEngine
         break;
     }
     _handler._recv.set_vim_status(text, color);
+    // In normal mode, while a command is being composed (pending [g],
+    // operator or count) show the valid completion keys at the right of the
+    // status bar, so the user learns the navigation shortcuts.
+    _handler._recv.set_vim_hint(
+        (_mode == MODE_NORMAL) ? normal_hint() : "");
+  }
+
+  /** Hint shown at the right of the status bar in normal mode while a command
+      is being composed (pending [g], operator or count): the valid completion
+      keys, so the user learns the shortcuts. Empty otherwise. */
+  String normal_hint()
+  {
+    if (_pending_g)
+      return "gg G";
+    if (_op == 'd')
+      return "dd dw de d0 d$";
+    if (_count.length() > 0)
+      return "h j k l w b e G 0 $";
+    return "";
   }
 
   // ---- Movement --------------------------------------------------------

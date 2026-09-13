@@ -223,6 +223,8 @@ public class Keyboard2View extends View
 
   public void onPointerHold(KeyValue k, Pointers.Modifiers mods)
   {
+    // Repetição por segurar não é um toque: não conta para o multi-tap.
+    _config.handler.on_multi_tap_pointer_repeat();
     _config.handler.key_up(k, mods);
     updateFlags();
   }

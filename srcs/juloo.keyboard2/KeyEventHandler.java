@@ -113,6 +113,13 @@ public final class KeyEventHandler
         break;
       default: break;
     }
+    // Multi-tap accent: um key_down de tecla = um toque em potencial (o
+    // key_up correspondente será contado); repetição por segurar vem só como
+    // key_up e nunca conta.
+    if (key.getKind() == KeyValue.Kind.Char)
+      _vim.note_key_down(key.getChar());
+    else
+      _vim.reset_multitap();
   }
 
   /** A key has been released. */
@@ -130,11 +137,12 @@ public final class KeyEventHandler
     }
     Pointers.Modifiers old_mods = _mods;
     update_meta_state(mods);
-    if (_vim.on_key(key, _meta_state))
+    boolean lua_hooked = (_lua != null && _lua.consume_lua_key(key));
+    if (!lua_hooked && _vim.on_key(key, _meta_state))
     {
       // The key was handled by the VIM engine.
     }
-    else
+    else if (!lua_hooked)
     {
       switch (key.getKind())
       {
@@ -339,6 +347,20 @@ public final class KeyEventHandler
     _typedword.remove_surrounding_text(remove_before, remove_after);
     _typedword.typed(new_text);
     conn.endBatchEdit();
+  }
+
+  /** Multi-tap accent: troca a letra digitada no toque anterior pelo
+      acentuada (1 tecla antes do cursor). Sempre chamado logo após o primeiro
+      caractere ter sido digitado com o cursor logo depois dele. */
+  void accent_multi_tap_replace(char c)
+  {
+    replace_surrounding_text(1, 0, String.valueOf(c));
+  }
+
+  /** Um key_up de repetição (segurar a tecla) não é um toque. */
+  public void on_multi_tap_pointer_repeat()
+  {
+    _vim.on_pointer_repeat();
   }
 
   /** See {!InputConnection.performContextMenuAction}. */
@@ -1304,6 +1326,8 @@ public final class KeyEventHandler
     public Context getApplicationContext();
     /** Update the VIM mode status bar. */
     public void set_vim_status(String text, int color);
+    /** Update the command hint shown at the right of the status bar. */
+    public void set_vim_hint(String text);
     /** Whether the embedded floating web browser panel is open. */
     public boolean is_float_open();
     /** Open or close the embedded floating web browser panel. */
