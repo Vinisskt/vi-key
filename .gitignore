@@ -15,3 +15,4 @@
 # transient test artifacts
 /a
 /blocker
+/build-logs
