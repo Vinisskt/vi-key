@@ -5,6 +5,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.os.Build;
 import android.os.Environment;
+import android.view.KeyEvent;
 import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.InputConnection;
 import java.io.ByteArrayInputStream;
@@ -51,6 +52,13 @@ import org.luaj.vm2.lib.jse.JsePlatform;
       - [vim.send(text)]: insert text at the cursor
       - [vim.copy(text)] / [vim.paste()] / [vim.clipboard()]: system clipboard
       - [vim.status(text)]: show a transient message in the keyboard status bar
+      - [vim.status_hold(text)]: show a message that stays until the next
+        status update (mode change, another command...). Used for persistent,
+        rolling output.
+      - [vim.key_hook(fn)]: register a key handler. While set, in normal/scroll
+        mode each key is first handed to [fn] with its name ("j", "k", "g",
+        "G", "enter", "esc", "backspace", "space"...); when [fn] returns true
+        the key is consumed. Pass nil to unregister.
       - [vim.page(text)]: open (or update) a browser page showing [text] as
         plain text, styled like the help page
       - [vim.interval(ms, fn)]: call [fn] on the keyboard queue every [ms]
@@ -79,6 +87,7 @@ final class LuaEngine
   final Map<String, ThemeData> _themes = new HashMap<String, ThemeData>();
   String _active_theme_name = null;
   int _next_interval_id = 1;
+  LuaValue _key_hook = null;
 
   LuaEngine(KeyEventHandler handler, Context appCtx)
   {
@@ -150,6 +159,7 @@ final class LuaEngine
     _commands.clear();
     clear_intervals();
     _themes.clear();
+    _key_hook = null;
     File init_file = new File(_lua_dir, "init.lua");
     if (init_file.exists() && init_file.isFile())
     {
@@ -471,6 +481,15 @@ final class LuaEngine
         return LuaValue.NONE;
       }
     });
+    vim.set("key_hook", new OneArgFunction() {
+      @Override public LuaValue call(LuaValue arg) {
+        if (arg.isnil())
+          _key_hook = null;
+        else if (arg.isfunction())
+          _key_hook = arg;
+        return LuaValue.NONE;
+      }
+    });
     vim.set("page", new OneArgFunction() {
       @Override public LuaValue call(LuaValue s) {
         _handler.open_page("out", s.tojstring());
@@ -645,5 +664,53 @@ final class LuaEngine
   {
     ExtractedText et = current_extracted();
     return (et == null) ? -1 : et.startOffset;
+  }
+
+  /** Give a [vim.key_hook] function a chance to consume a key in normal/scroll
+      mode. Returns true when the hook took the key (and false otherwise). The
+      hook is called with the key name ("j", "k", "enter", "esc", "backspace",
+      "space", ...) and consumes the key when it returns true. */
+  boolean consume_lua_key(KeyValue key)
+  {
+    if (_key_hook == null)
+      return false;
+    int mode = _handler._vim.mode();
+    if (mode != VimEngine.MODE_NORMAL && mode != VimEngine.MODE_SCROLL)
+      return false;
+    String name;
+    switch (key.getKind())
+    {
+      case Char: name = String.valueOf(key.getChar()); break;
+      case Keyevent:
+        switch (key.getKeyevent())
+        {
+          case KeyEvent.KEYCODE_ENTER: name = "enter"; break;
+          case KeyEvent.KEYCODE_ESCAPE: name = "esc"; break;
+          case KeyEvent.KEYCODE_BACK: name = "back"; break;
+          case KeyEvent.KEYCODE_DPAD_UP: name = "up"; break;
+          case KeyEvent.KEYCODE_DPAD_DOWN: name = "down"; break;
+          default: return false;
+        }
+        break;
+      case Editing:
+        switch (key.getEditing())
+        {
+          case BACKSPACE: name = "backspace"; break;
+          case SPACE_BAR: name = "space"; break;
+          default: return false;
+        }
+        break;
+      default: return false;
+    }
+    try
+    {
+      return _key_hook.call(name).toboolean();
+    }
+    catch (Exception ex)
+    {
+      _key_hook = null;
+      flash("lua key_hook: " + ex.getMessage());
+      return false;
+    }
   }
 }
