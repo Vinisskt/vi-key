@@ -3,14 +3,16 @@ package com.vinisskt.vikey;
 import android.view.KeyEvent;
 import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.InputConnection;
+import java.util.HashMap;
 
 /** Vim-style editing engine.
     Characters typed are interpreted according to the current mode: INSERT
     types them, NORMAL interprets them as editing commands and SEARCH appends
     them to a search query.
     Only the main Vim commands are implemented: [hjkl] movement, [wbe] word
-    motions, [0$] line start/end, [ggG] document start/end, [dd], [dw], [de],
-    [x], undo with [u], redo with ctrl+r, [i] to switch back to insert mode
+    motions, [0$] line start/end, [ggG] document start/end, [dd], [dw], [de], [yy], [yw], [ye], [x], undo with [u],
+    redo with ctrl+r, [p]/[P] paste, registers selected with ["]name] ([a-z]),
+    [i] to switch back to insert mode
     before the cursor and [a] to append after it,
     [o] to open a new line below and [O] to open one above, [/?] search forward
     and backward ([/] searches, [?] opens the built-in help),
@@ -151,6 +153,13 @@ public final class VimEngine
   final StringBuilder _count = new StringBuilder();
   char _op = 0;
   boolean _pending_g = false;
+  /** Clipboard registers: named registers [a-z] and the unnamed register (the
+      last yanked or deleted text). A register is selected with ["a]..["z] and
+      applies to the next yank/delete/paste command. */
+  final HashMap<Character,String> _registers = new HashMap<Character,String>();
+  String _unnamed_register = "";
+  char _cmd_register = 0;
+  boolean _register_pending = false;
 
   VimEngine(KeyEventHandler handler)
   {
@@ -167,9 +176,13 @@ public final class VimEngine
     _op = 0;
     _pending_g = false;
     _count.setLength(0);
+    _cmd_register = 0;
+    _register_pending = false;
     _handler.get_handler().removeCallbacks(_jk_delay);
     _search.reset();
     _cmd.reset();
+    _registers.clear();
+    _unnamed_register = "";
     reset_multitap();
     update_status();
   }
@@ -362,6 +375,34 @@ public final class VimEngine
 
   boolean on_normal_char(char c)
   {
+    if (c == '"')
+    {
+      _register_pending = true;
+      return true;
+    }
+    if (_register_pending)
+    {
+      _register_pending = false;
+      char reg = Character.toLowerCase(c);
+      if (is_register_name(reg))
+      {
+        _cmd_register = reg;
+        return true;
+      }
+      // Invalid register name: ignore it and process [c] normally.
+    }
+    if (c == 'P')
+    {
+      paste_register(false);
+      _clear_count();
+      return true;
+    }
+    if (c == 'p')
+    {
+      paste_register(true);
+      _clear_count();
+      return true;
+    }
     if (c == 'N')
     {
       _search.prev();
@@ -412,6 +453,18 @@ public final class VimEngine
         default: _op = 0; break;
       }
     }
+    if (_op == 'y')
+    {
+      switch (c)
+      {
+        case 'y': _op = 0; yank_line(count()); _clear_count(); return true;
+        case 'w': _op = 0; yank_word(count()); _clear_count(); return true;
+        case 'e': _op = 0; yank_word_end(count()); _clear_count(); return true;
+        case '0': _op = 0; yank_col_start(); _clear_count(); return true;
+        case '$': _op = 0; yank_col_end(); _clear_count(); return true;
+        default: _op = 0; break;
+      }
+    }
     switch (c)
     {
       case 'i': _clear_count(); set_mode(MODE_INSERT); return true;
@@ -430,6 +483,7 @@ public final class VimEngine
       case 'g': _pending_g = true; return true;
       case 'x': delete_forward(count()); _clear_count(); return true;
       case 'd': _op = 'd'; return true;
+      case 'y': _op = 'y'; return true;
       case 'u': _handler.send_context_menu_action(android.R.id.undo); _clear_count(); return true;
       case '/': _begin_search(); _clear_count(); return true;
       case ':': _begin_command(); _clear_count(); return true;
@@ -544,6 +598,8 @@ public final class VimEngine
       return "gg G";
     if (_op == 'd')
       return "dd dw de d0 d$";
+    if (_op == 'y')
+      return "yy yw ye y0 y$";
     if (_count.length() > 0)
       return "h j k l w b e G 0 $";
     return "";
@@ -727,9 +783,12 @@ public final class VimEngine
       // Delete the selection instead of a character.
       int before = td.cursor_rel - td.sel_s_rel;
       int after = td.sel_e_rel - td.cursor_rel;
+      deleted_to_register(td.text.substring(td.sel_s_rel, td.sel_e_rel));
       delete_range(td, before, after);
       return;
     }
+    deleted_to_register(td.text.substring(td.cursor_rel,
+        Math.min(td.n, td.cursor_rel + count)));
     delete_range(td, 0, count);
   }
 
@@ -749,8 +808,13 @@ public final class VimEngine
         line_end++;
       int before = rel - line_start;
       int after = line_end - rel;
+      int line_len = after;
       if (line_end < td.n)
-        after++; // Include the line ending
+      {
+        line_len++; // Include the line ending in the register
+        after++;    // Include the line ending in the deletion
+      }
+      deleted_to_register(td.text.substring(line_start, line_start + line_len));
       delete_range(td, before, after);
     }
   }
@@ -767,9 +831,13 @@ public final class VimEngine
       {
         // Nothing to delete: still delete trailing separators before EOF.
         if (end > td.cursor_rel)
+        {
+          deleted_to_register(td.text.substring(td.cursor_rel, end));
           delete_range(td, 0, end - td.cursor_rel);
+        }
         return;
       }
+      deleted_to_register(td.text.substring(td.cursor_rel, end));
       delete_range(td, 0, end - td.cursor_rel);
     }
   }
@@ -784,6 +852,7 @@ public final class VimEngine
       int end = word_end_forward(td.text, td.cursor_rel);
       if (end <= td.cursor_rel)
         return;
+      deleted_to_register(td.text.substring(td.cursor_rel, end));
       delete_range(td, 0, end - td.cursor_rel);
     }
   }
@@ -797,6 +866,7 @@ public final class VimEngine
     int line_start = rel;
     while (line_start > 0 && td.text.charAt(line_start - 1) != '\n')
       line_start--;
+    deleted_to_register(td.text.substring(line_start, rel));
     delete_range(td, rel - line_start, 0);
   }
 
@@ -809,7 +879,149 @@ public final class VimEngine
     int line_end = rel;
     while (line_end < td.n && td.text.charAt(line_end) != '\n')
       line_end++;
+    deleted_to_register(td.text.substring(rel, line_end));
     delete_range(td, 0, line_end - rel);
+  }
+
+  // ---- Clipboard registers ---------------------------------------------
+
+  /** Register names: [a-z]. The unnamed register holds the last yanked or
+      deleted text. */
+  static boolean is_register_name(char c)
+  {
+    return c >= 'a' && c <= 'z';
+  }
+
+  /** Text to paste with [p]/[P]: the selected register, the unnamed register
+      (last yank/delete) or, as a fallback, the system clipboard. */
+  String register_text()
+  {
+    if (_cmd_register != 0)
+    {
+      String s = _registers.get(_cmd_register);
+      _cmd_register = 0;
+      if (s != null)
+        return s;
+    }
+    if (!_unnamed_register.isEmpty())
+      return _unnamed_register;
+    String sys = _handler.get_clipboard_text();
+    return (sys == null) ? "" : sys;
+  }
+
+  /** Store [text] in the selected register and in the unnamed register,
+      mirroring vim: yanking to a named register also updates the unnamed
+      register. Also updates the system clipboard so the text can be pasted
+      anywhere. */
+  void yank_to_register(String text)
+  {
+    if (_cmd_register != 0)
+    {
+      _registers.put(_cmd_register, text);
+      _cmd_register = 0;
+    }
+    _unnamed_register = text;
+    _handler.set_clipboard_text(text);
+  }
+
+  /** Same as [yank_to_register] but for deletions (vim also puts deleted text
+      into the register). */
+  void deleted_to_register(String text)
+  {
+    if (_cmd_register != 0)
+    {
+      _registers.put(_cmd_register, text);
+      _cmd_register = 0;
+    }
+    _unnamed_register = text;
+  }
+
+  /** Paste at the cursor. [after] moves one character to the right first so
+      the text is inserted after the current character (vim [p]); otherwise it
+      inserts before it (vim [P]). */
+  void paste_register(boolean after)
+  {
+    String text = register_text();
+    if (text.isEmpty())
+    {
+      flash_status("registrador vazio", STATUS_COLOR_CMD);
+      return;
+    }
+    if (after)
+      _move_l(1);
+    _handler.send_text(text);
+  }
+
+  // ---- Yank (copy) ------------------------------------------------------
+
+  void yank_line(int count)
+  {
+    for (int i = 0; i < count; i++)
+    {
+      TextData td = get_text();
+      if (td == null)
+        return;
+      int rel = td.cursor_rel;
+      int line_start = rel;
+      while (line_start > 0 && td.text.charAt(line_start - 1) != '\n')
+        line_start--;
+      int line_end = rel;
+      while (line_end < td.n && td.text.charAt(line_end) != '\n')
+        line_end++;
+      yank_to_register(td.text.substring(line_start, line_end));
+    }
+  }
+
+  void yank_word(int count)
+  {
+    for (int i = 0; i < count; i++)
+    {
+      TextData td = get_text();
+      if (td == null)
+        return;
+      int end = word_start_after(td.text, td.cursor_rel);
+      if (end <= td.cursor_rel)
+        return;
+      yank_to_register(td.text.substring(td.cursor_rel, end));
+    }
+  }
+
+  void yank_word_end(int count)
+  {
+    for (int i = 0; i < count; i++)
+    {
+      TextData td = get_text();
+      if (td == null)
+        return;
+      int end = word_end_forward(td.text, td.cursor_rel);
+      if (end <= td.cursor_rel)
+        return;
+      yank_to_register(td.text.substring(td.cursor_rel, end));
+    }
+  }
+
+  void yank_col_start()
+  {
+    TextData td = get_text();
+    if (td == null)
+      return;
+    int rel = td.cursor_rel;
+    int line_start = rel;
+    while (line_start > 0 && td.text.charAt(line_start - 1) != '\n')
+      line_start--;
+    yank_to_register(td.text.substring(line_start, rel));
+  }
+
+  void yank_col_end()
+  {
+    TextData td = get_text();
+    if (td == null)
+      return;
+    int rel = td.cursor_rel;
+    int line_end = rel;
+    while (line_end < td.n && td.text.charAt(line_end) != '\n')
+      line_end++;
+    yank_to_register(td.text.substring(rel, line_end));
   }
 
   // ---- Text access -----------------------------------------------------
