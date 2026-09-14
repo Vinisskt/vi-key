@@ -89,9 +89,11 @@ public final class BrowserActivity extends Activity
 
   static String normalize_url(String url)
   {
-    if (url == null || url.isEmpty())
+    if (url == null)
       return DEFAULT_URL;
     url = url.trim();
+    if (url.isEmpty())
+      return DEFAULT_URL;
     if (!url.contains("://"))
       url = "https://" + url;
     return url;

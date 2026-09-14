@@ -84,6 +84,8 @@ public abstract class ListGroupPreference<E> extends PreferenceGroup
       [null] on error. */
   static <E> List<E> load_from_string(String inp, Serializer<E> serializer)
   {
+    if (inp == null)
+      return null;
     try
     {
       List<E> l = new ArrayList<E>();

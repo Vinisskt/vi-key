@@ -14,6 +14,8 @@ dependencies {
   implementation("org.luaj:luaj-jse:3.0.1")
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.mockito:mockito-core:5.16.1")
+  // Real org.json (not the Android stub) so the prefs serializers work on the JVM.
+  testImplementation("org.json:json:20240303")
 }
 
 android {

@@ -106,7 +106,7 @@ public class CustomLayoutEditDialog
     protected void onDraw(Canvas canvas)
     {
       float digit_width = _ln_paint.measureText("0");
-      int line_count = getLineCount();
+      int line_count = Math.max(1, getLineCount());
       // Extra '+ 1' serves as padding.
       int padding = (int)(((int)Math.log10(line_count) + 1 + 1) * digit_width);
       if (padding != _prev_padding) {

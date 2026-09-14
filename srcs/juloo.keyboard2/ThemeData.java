@@ -133,6 +133,8 @@ final class ThemeData
       Returns [null] when [s] is not a valid color. */
   static Integer parse_color(String s)
   {
+    if (s == null)
+      return null;
     String hex = s.startsWith("#") ? s.substring(1) : s;
     int len = hex.length();
     if (len == 3 || len == 6 || len == 8)

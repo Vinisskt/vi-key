@@ -48,7 +48,9 @@ public class SlideBarPreference extends DialogPreference
     _seekBar.setMax(STEPS);
     _min = float_of_string(attrs.getAttributeValue(null, "min"));
     _value = _min;
-    _max = Math.max(1f, float_of_string(attrs.getAttributeValue(null, "max")));
+    // Ensure a strictly positive range, otherwise the progress computations
+    // divide by zero (or invert the range).
+    _max = Math.max(_min + 1f, float_of_string(attrs.getAttributeValue(null, "max")));
     _layout = new LinearLayout(getContext());
     _layout.setOrientation(LinearLayout.VERTICAL);
     _layout.addView(_textView);

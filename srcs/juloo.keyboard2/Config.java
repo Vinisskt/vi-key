@@ -134,14 +134,19 @@ public final class Config
       keyboardHeightPercent = _prefs.getInt(foldable_unfolded ? "keyboard_height_unfolded" : "keyboard_height", 35);
     }
     layouts = LayoutsPreference.load_from_preferences(res, _prefs);
+    // The default value is an immutable list, copy it so the vim layout can be
+    // prepended below.
+    layouts = new ArrayList<KeyboardData>(layouts);
     // Force the Vim Programmer layout to be the primary layout so the built-in
     // Vim engine and its [quick_tap] symbols are active by default, even after
     // a fresh install or a wiped preference.
     int vim_layout = LayoutsPreference.layout_id_of_name(res, "vim_prog");
     if (vim_layout >= 0)
       layouts.add(0, KeyboardData.load(res, vim_layout));
-    inverse_numpad = _prefs.getString("numpad_layout", "default").equals("low_first");
+    inverse_numpad = "low_first".equals(_prefs.getString("numpad_layout", "default"));
     String number_row = _prefs.getString("number_row", "no_number_row");
+    if (number_row == null)
+      number_row = "no_number_row";
     add_number_row = !number_row.equals("no_number_row");
     number_row_symbols = number_row.equals("symbols");
     // The baseline for the swipe distance correspond to approximately the
@@ -150,9 +155,9 @@ public final class Config
     // The option value uses an unnamed scale where the baseline is around 25.
     float dpi_ratio = Math.max(dm.xdpi, dm.ydpi) / Math.min(dm.xdpi, dm.ydpi);
     float swipe_scaling = Math.min(dm.widthPixels, dm.heightPixels) / 10.f * dpi_ratio;
-    float swipe_dist_value = Float.valueOf(_prefs.getString("swipe_dist", "15"));
+    float swipe_dist_value = get_float_pref(_prefs, "swipe_dist", 15.f);
     swipe_dist_px = swipe_dist_value / 25.f * swipe_scaling;
-    float slider_sensitivity = Float.valueOf(_prefs.getString("slider_sensitivity", "30")) / 100.f;
+    float slider_sensitivity = get_float_pref(_prefs, "slider_sensitivity", 30.f) / 100.f;
     slide_step_px = slider_sensitivity * swipe_scaling;
     vibrate_custom = _prefs.getBoolean("vibrate_custom", false);
     vibrate_duration = _prefs.getInt("vibrate_duration", 20);
@@ -189,13 +194,15 @@ public final class Config
     change_method_key_replacement = get_change_method_key_replacement(_prefs);
     extra_keys_param = ExtraKeysPreference.get_extra_keys(_prefs);
     extra_keys_custom = CustomExtraKeysPreference.get(_prefs);
-    selected_number_layout = NumberLayout.of_string(_prefs.getString("number_entry_layout", "pin"));
+    String number_entry_layout = _prefs.getString("number_entry_layout", "pin");
+    selected_number_layout = NumberLayout.of_string(
+        (number_entry_layout == null) ? "pin" : number_entry_layout);
     current_layout_narrow = _prefs.getInt("current_layout_portrait", 0);
     current_layout_wide = _prefs.getInt("current_layout_landscape", 0);
-    circle_sensitivity = Integer.valueOf(_prefs.getString("circle_sensitivity", "2"));
+    circle_sensitivity = get_int_pref(_prefs, "circle_sensitivity", 2);
     clipboard_history_enabled = _prefs.getBoolean("clipboard_history_enabled", false);
-    clipboard_history_duration = Integer.parseInt(_prefs.getString("clipboard_history_duration", "5"));
-    physical_keyboard_hide = _prefs.getString("physical_keyboard_behavior", "hide").equals("hide");
+    clipboard_history_duration = get_int_pref(_prefs, "clipboard_history_duration", 5);
+    physical_keyboard_hide = "hide".equals(_prefs.getString("physical_keyboard_behavior", "hide"));
     float screen_width_dp = dm.widthPixels / dm.density;
     wide_screen = screen_width_dp >= WIDE_DEVICE_THRESHOLD;
     split_layout = get_split_layout();
@@ -250,9 +257,32 @@ public final class Config
     return get_dip_pref(dm, pref_base_name + suffix, def);
   }
 
+  /** An invalid (from a corrupted pref file) numeric string must not crash the
+      IME, fall back to the default value instead. */
+  private static float get_float_pref(SharedPreferences prefs, String name, float def)
+  {
+    String s = prefs.getString(name, String.valueOf(def));
+    if (s == null)
+      return def;
+    try { return Float.valueOf(s); }
+    catch (NumberFormatException e) { return def; }
+  }
+
+  private static int get_int_pref(SharedPreferences prefs, String name, int def)
+  {
+    String s = prefs.getString(name, String.valueOf(def));
+    if (s == null)
+      return def;
+    try { return Integer.parseInt(s); }
+    catch (NumberFormatException e) { return def; }
+  }
+
   private static KeyValue get_change_method_key_replacement(SharedPreferences prefs)
   {
-    switch (prefs.getString("change_method_key_replacement", "prev"))
+    String s = prefs.getString("change_method_key_replacement", "prev");
+    if (s == null)
+      s = "prev";
+    switch (s)
     {
       case "prev": return KeyValue.CHANGE_METHOD_PREV;
       case "next": return KeyValue.CHANGE_METHOD_NEXT;
@@ -263,7 +293,10 @@ public final class Config
 
   final boolean get_split_layout()
   {
-    switch (_prefs.getString("split_layout", "wide"))
+    String s = _prefs.getString("split_layout", "wide");
+    if (s == null)
+      s = "wide";
+    switch (s)
     {
       case "wide": return wide_screen;
       case "landscape": return orientation_landscape;
@@ -349,8 +382,9 @@ public final class Config
         }
         // Fallthrough
       case 3:
-        e.putString("change_method_key_replacement",
-            prefs.getBoolean("switch_input_immediate", false) ? "prev" : "picker");
+        if (!prefs.contains("change_method_key_replacement"))
+          e.putString("change_method_key_replacement",
+              prefs.getBoolean("switch_input_immediate", false) ? "prev" : "picker");
         // Fallthrough
       case 4:
       default: break;
