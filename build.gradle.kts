@@ -179,11 +179,9 @@ val jacocoTestReport by tasks.registering(JacocoReport::class) {
     html.required.set(true)
   }
   sourceDirectories.setFrom(files("srcs/juloo.keyboard2"))
-  classDirectories.setFrom(fileTree(layout.buildDirectory) {
-    include("**/javac/**/classes/juloo/**/*.class",
-        "**/kotlin-classes/**/juloo/**/*.class")
-    exclude("**/R*.class", "**/BuildConfig.class")
-  })
+  classDirectories.setFrom(
+    layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
+    layout.buildDirectory.dir("tmp/kotlin-classes/debug"))
   executionData.setFrom(fileTree(layout.buildDirectory) { include("jacoco/*.exec") })
 }
 
