@@ -171,6 +171,23 @@ public class LayoutsPreference extends ListGroupPreference<LayoutsPreference.Lay
       .show();
   }
 
+  /** Validate custom layout source: return an error message or 'null' when
+      the layout parses fine. Used by the custom layout dialog. */
+  static String validate_custom_layout(String text)
+  {
+    if (text == null || text.trim().equals(""))
+      return "Empty layout";
+    try
+    {
+      KeyboardData.load_string_exn(text);
+      return null; // Validation passed
+    }
+    catch (Exception e)
+    {
+      return e.getMessage();
+    }
+  }
+
   /** Dialog for specifying a custom layout. [initial_text] is the layout
       description when modifying a layout. */
   void select_custom(final SelectionCallback callback, String initial_text)
@@ -189,15 +206,7 @@ public class LayoutsPreference extends ListGroupPreference<LayoutsPreference.Lay
 
           public String validate(String text)
           {
-            try
-            {
-              KeyboardData.load_string_exn(text);
-              return null; // Validation passed
-            }
-            catch (Exception e)
-            {
-              return e.getMessage();
-            }
+            return validate_custom_layout(text);
           }
         });
   }

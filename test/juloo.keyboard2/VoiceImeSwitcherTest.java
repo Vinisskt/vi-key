@@ -82,6 +82,23 @@ public class VoiceImeSwitcherTest
   }
 
   @Test
+  public void chooser_is_required_until_the_state_is_consistent()
+  {
+    List<VoiceImeSwitcher.IME> imes = new ArrayList<VoiceImeSwitcher.IME>();
+    imes.add(ime("com.a", "voice"));
+    imes.add(ime("com.b", "voice"));
+    // First use: nothing stored yet.
+    assertTrue(VoiceImeSwitcher.chooser_is_required(null, "com.a,com.b,", imes));
+    assertTrue(VoiceImeSwitcher.chooser_is_required("com.a", null, imes));
+    // The known set changed since the last use.
+    assertTrue(VoiceImeSwitcher.chooser_is_required("com.a", "com.a,", imes));
+    // The last used ime disappeared from the list.
+    assertTrue(VoiceImeSwitcher.chooser_is_required("com.gone", "com.a,com.b,", imes));
+    // All consistent: switch straight to the last used ime.
+    assertFalse(VoiceImeSwitcher.chooser_is_required("com.a", "com.a,com.b,", imes));
+  }
+
+  @Test
   public void switch_to_voice_ime_uses_stored_last_used()
   {
     VoiceImeSwitcher.IME voice_ime = ime("com.voice", "voice");

@@ -36,13 +36,17 @@ public class IntSlideBarPreference extends DialogPreference
   public IntSlideBarPreference(Context context, AttributeSet attrs)
   {
     super(context, attrs);
-    _initialSummary = getSummary().toString();
+    CharSequence summary = getSummary();
+    _initialSummary = (summary == null) ? "%d" : summary.toString();
     _textView = new TextView(context);
     _textView.setPadding(48, 40, 48, 40);
     _seekBar = new SeekBar(context);
     _seekBar.setOnSeekBarChangeListener(this);
     _min = attrs.getAttributeIntValue(null, "min", 0);
     int max = attrs.getAttributeIntValue(null, "max", 0);
+    // Ensure a non-negative range, otherwise progress ends up inverted.
+    if (max < _min)
+      max = _min;
     _seekBar.setMax(max - _min);
     _layout = new LinearLayout(getContext());
     _layout.setOrientation(LinearLayout.VERTICAL);
@@ -80,7 +84,7 @@ public class IntSlideBarPreference extends DialogPreference
       value = (Integer)defaultValue;
       persistInt(value);
     }
-    _seekBar.setProgress(value - _min);
+    _seekBar.setProgress(progress_of_value(value, _min));
     updateText();
   }
 
@@ -96,7 +100,7 @@ public class IntSlideBarPreference extends DialogPreference
     if (positiveResult)
       persistInt(_seekBar.getProgress() + _min);
     else
-      _seekBar.setProgress(getPersistedInt(_min) - _min);
+      _seekBar.setProgress(progress_of_value(getPersistedInt(_min), _min));
 
     updateText();
   }
@@ -116,5 +120,17 @@ public class IntSlideBarPreference extends DialogPreference
 
     _textView.setText(f);
     setSummary(f);
+  }
+
+  /** The value for a given progress step. */
+  static int value_at_progress(int progress, int min)
+  {
+    return progress + min;
+  }
+
+  /** The progress step for a given value. */
+  static int progress_of_value(int value, int min)
+  {
+    return value - min;
   }
 }

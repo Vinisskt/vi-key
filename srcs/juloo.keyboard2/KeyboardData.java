@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlPullParserFactory;
 
 public final class KeyboardData
 {
@@ -230,7 +232,17 @@ public final class KeyboardData
       [null]. */
   public static KeyboardData load_string_exn(String src) throws Exception
   {
-    XmlPullParser parser = Xml.newPullParser();
+    XmlPullParser parser;
+    try
+    {
+      // On Android the framework registers KXmlParser; on plain JVMs (unit
+      // tests) the factory looks the provider up from the classpath.
+      parser = XmlPullParserFactory.newInstance().newPullParser();
+    }
+    catch (XmlPullParserException e)
+    {
+      parser = Xml.newPullParser();
+    }
     parser.setInput(new StringReader(src));
     return parse_keyboard(parser);
   }

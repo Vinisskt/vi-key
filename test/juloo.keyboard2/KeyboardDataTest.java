@@ -754,9 +754,14 @@ public class KeyboardDataTest
   }
 
   @Test
-  public void load_string_error_returns_null()
+  public void load_string_parses_well_formed_and_returns_null_on_error()
   {
-    assertNull(KeyboardData.load_string("<keyboard/>"));
+    // A real XmlPullParser is available on the JVM (kxml2), so well-formed
+    // sources parse end-to-end while corrupt ones fall back to null.
+    assertNotNull(KeyboardData.load_string(
+        "<keyboard><row><key key0='a'/></row></keyboard>"));
+    assertNull(KeyboardData.load_string("not xml"));
+    assertNull(KeyboardData.load_string(""));
   }
 
   @Test

@@ -85,4 +85,19 @@ public class LayoutsPreferenceTest
     assertEquals(1, layouts.size());
     assertNull(layouts.get(0));
   }
+
+  @Test
+  public void validate_custom_layout_accepts_well_formed_source()
+  {
+    assertNull(LayoutsPreference.validate_custom_layout(
+        "<keyboard><row><key key0='a'/></row></keyboard>"));
+  }
+
+  @Test
+  public void validate_custom_layout_rejects_corrupt_source()
+  {
+    assertNotNull(LayoutsPreference.validate_custom_layout("not xml"));
+    assertNotNull(LayoutsPreference.validate_custom_layout(""));
+    assertNotNull(LayoutsPreference.validate_custom_layout(null));
+  }
 }

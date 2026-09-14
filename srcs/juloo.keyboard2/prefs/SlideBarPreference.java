@@ -40,7 +40,8 @@ public class SlideBarPreference extends DialogPreference
   public SlideBarPreference(Context context, AttributeSet attrs)
   {
     super(context, attrs);
-    _initialSummary = getSummary().toString();
+    CharSequence summary = getSummary();
+    _initialSummary = (summary == null) ? "%f" : summary.toString();
     _textView = new TextView(context);
     _textView.setPadding(48, 40, 48, 40);
     _seekBar = new SeekBar(context);
@@ -60,7 +61,7 @@ public class SlideBarPreference extends DialogPreference
   @Override
   public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser)
   {
-    _value = Math.round(progress * (_max - _min)) / (float)STEPS + _min;
+    _value = value_at_progress(progress, _min, _max);
     updateText();
   }
 
@@ -86,7 +87,7 @@ public class SlideBarPreference extends DialogPreference
       _value = (Float)defaultValue;
       persistFloat(_value);
     }
-    _seekBar.setProgress((int)((_value - _min) * STEPS / (_max - _min)));
+    _seekBar.setProgress(progress_of_value(_value, _min, _max));
     updateText();
   }
 
@@ -102,7 +103,7 @@ public class SlideBarPreference extends DialogPreference
     if (positiveResult)
       persistFloat(_value);
     else
-      _seekBar.setProgress((int)((getPersistedFloat(_min) - _min) * STEPS / (_max - _min)));
+      _seekBar.setProgress(progress_of_value(getPersistedFloat(_min), _min, _max));
 
     updateText();
   }
@@ -124,10 +125,32 @@ public class SlideBarPreference extends DialogPreference
     setSummary(f);
   }
 
-  private static float float_of_string(String str)
+  /** Parse a float from an xml attribute. [null] or a corrupt string fall
+      back to 0. */
+  static float float_of_string(String str)
   {
     if (str == null)
       return (0f);
-    return (Float.parseFloat(str));
+    try
+    {
+      return (Float.parseFloat(str));
+    }
+    catch (NumberFormatException e)
+    {
+      return (0f);
+    }
+  }
+
+  /** The slider value for a given progress step. */
+  static float value_at_progress(int progress, float min, float max)
+  {
+    return Math.round(progress * (max - min)) / (float)STEPS + min;
+  }
+
+  /** The progress step for a given slider value. */
+  static int progress_of_value(float value, float min, float max)
+  {
+    int step = (int)((value - min) * STEPS / (max - min));
+    return Math.max(0, Math.min(STEPS, step));
   }
 }

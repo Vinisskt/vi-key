@@ -16,6 +16,9 @@ dependencies {
   testImplementation("org.mockito:mockito-core:5.16.1")
   // Real org.json (not the Android stub) so the prefs serializers work on the JVM.
   testImplementation("org.json:json:20240303")
+  // Real XmlPullParser (KXmlParser + its factory) so custom layout validation
+  // runs end-to-end on the JVM instead of hitting the android.util.Xml stub.
+  testImplementation("net.sf.kxml:kxml2:2.3.0")
 }
 
 android {

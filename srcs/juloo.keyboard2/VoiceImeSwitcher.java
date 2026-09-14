@@ -29,17 +29,27 @@ class VoiceImeSwitcher
       InputMethodManager imm, SharedPreferences prefs)
   {
     List<IME> imes = get_voice_ime_list(imm);
-    String last_used = prefs.getString(PREF_LAST_USED, null);
-    String last_known_imes = prefs.getString(PREF_KNOWN_IMES, null);
-    IME last_used_ime = get_ime_by_id(imes, last_used);
     if (imes.size() == 0)
       return false;
-    if (last_used == null || last_known_imes == null || last_used_ime == null
-        || !last_known_imes.equals(serialize_ime_ids(imes)))
+    String last_used = prefs.getString(PREF_LAST_USED, null);
+    if (chooser_is_required(last_used,
+          prefs.getString(PREF_KNOWN_IMES, null), imes))
       choose_voice_ime_and_update_prefs(ims, prefs, imes);
     else
-      switch_input_method(ims, last_used_ime);
+      switch_input_method(ims, get_ime_by_id(imes, last_used));
     return true;
+  }
+
+  /** Whether the chooser popup must be shown: on the first use, when the set
+      of voice imes changed, or when the last used one disappeared. */
+  static boolean chooser_is_required(String last_used, String last_known_imes,
+      List<IME> imes)
+  {
+    if (last_used == null || last_known_imes == null)
+      return true;
+    if (get_ime_by_id(imes, last_used) == null)
+      return true;
+    return !last_known_imes.equals(serialize_ime_ids(imes));
   }
 
   public static boolean choose_voice_ime(InputMethodService ims,
