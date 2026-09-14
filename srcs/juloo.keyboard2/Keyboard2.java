@@ -86,6 +86,8 @@ public class Keyboard2 extends InputMethodService
   void incrTextLayout(int delta)
   {
     int s = _config.layouts.size();
+    if (s < 1)
+      return;
     setTextLayout((_config.get_current_layout() + delta + s) % s);
   }
 

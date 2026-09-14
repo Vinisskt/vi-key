@@ -67,6 +67,21 @@ public class VoiceImeSwitcherTest
   }
 
   @Test
+  public void get_ime_display_names_uses_the_loaded_label()
+  {
+    InputMethodInfo im = mock(InputMethodInfo.class);
+    when(im.getId()).thenReturn("com.a");
+    when(im.loadLabel(any())).thenReturn("Voice");
+    VoiceImeSwitcher.IME voice_ime =
+        new VoiceImeSwitcher.IME(im, mock(InputMethodSubtype.class));
+    List<VoiceImeSwitcher.IME> imes = new ArrayList<VoiceImeSwitcher.IME>();
+    imes.add(voice_ime);
+    assertEquals(Arrays.asList("Voice"),
+        VoiceImeSwitcher.get_ime_display_names(
+            mock(InputMethodService.class), imes));
+  }
+
+  @Test
   public void switch_to_voice_ime_uses_stored_last_used()
   {
     VoiceImeSwitcher.IME voice_ime = ime("com.voice", "voice");
